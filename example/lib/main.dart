@@ -27,7 +27,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> initRadioService() async {
     try {
       await _flutterRadioPlayer.init("Flutter Radio Example", "Live",
-          "http://perseus.shoutca.st:9899/stream", "true");
+          "URL_HERE", "true");
     } on PlatformException {
       print("Exception occured while trying to register the services.");
     }
@@ -62,7 +62,7 @@ class _MyAppState extends State<MyApp> {
                         return Text("Loading stream...");
                       case FlutterRadioPlayer.flutter_radio_error:
                         return RaisedButton(
-                            child: Text("Retry to connect ?"),
+                            child: Text("Retry ?"),
                             onPressed: () async {
                               await initRadioService();
                             });
