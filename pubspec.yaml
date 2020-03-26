@@ -1,8 +1,8 @@
 name: flutter_radio_player
-description: A new Flutter plugin.
+description: A Plugin that handles audio streams without any hazel.
 version: 0.0.1
-author:
-homepage:
+author: Sithira Munasinghe
+homepage: http://sithira-munasinghe.me
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
