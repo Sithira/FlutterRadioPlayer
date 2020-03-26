@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 class FlutterRadioPlayer {
-
   static const MethodChannel _channel =
-  const MethodChannel('flutter_radio_player');
+      const MethodChannel('flutter_radio_player');
 
   static const EventChannel _eventChannel =
-  const EventChannel("flutter_radio_player_stream");
+      const EventChannel("flutter_radio_player_stream");
 
   // constants to support event channel
   static const flutter_radio_stopped = "flutter_radio_stopped";
@@ -19,7 +18,8 @@ class FlutterRadioPlayer {
 
   static Stream<String> _isPlayingStream;
 
-  Future<void> init(String appName, String subTitle, String streamURL, String playWhenReady) async {
+  Future<void> init(String appName, String subTitle, String streamURL,
+      String playWhenReady) async {
     return await _channel.invokeMethod("initService", {
       "appName": appName,
       "subTitle": subTitle,

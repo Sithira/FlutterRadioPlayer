@@ -26,8 +26,8 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> initRadioService() async {
     try {
-      await _flutterRadioPlayer.init("Flutter Radio Example", "Live",
-          "URL_HERE", "true");
+      await _flutterRadioPlayer.init(
+          "Flutter Radio Example", "Live", "URL_HERE", "true");
     } on PlatformException {
       print("Exception occured while trying to register the services.");
     }
@@ -79,7 +79,8 @@ class _MyAppState extends State<MyApp> {
                                     await _flutterRadioPlayer.playOrPause();
                                   },
                                   icon: snapshot.data ==
-                                      FlutterRadioPlayer.flutter_radio_playing
+                                          FlutterRadioPlayer
+                                              .flutter_radio_playing
                                       ? Icon(Icons.pause)
                                       : Icon(Icons.play_arrow)),
                               IconButton(
@@ -96,9 +97,9 @@ class _MyAppState extends State<MyApp> {
                   min: 0,
                   max: 1.0,
                   onChanged: (value) => setState(() {
-                    widget.volume = value;
-                    _flutterRadioPlayer.setVolume(widget.volume);
-                  })),
+                        widget.volume = value;
+                        _flutterRadioPlayer.setVolume(widget.volume);
+                      })),
               Text("Volume: " + (widget.volume * 100).toStringAsFixed(0))
             ],
           ),
