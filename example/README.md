@@ -1,6 +1,7 @@
-# flutter_radio_player_example
+# Flutter Radio Player Example
 
-Demonstrates how to use the flutter_radio_player plugin.
+Demonstrates how to use the flutter_radio_player plugin. 
+Kindly look at the main.dart for further clarification.
 
 ## Getting Started
 
