@@ -23,7 +23,7 @@ For your Android application you might want to add permissions in `AndroidManife
 
 For your iOS application you need to enable it like this
 
-! [xcode image] (https://i.ibb.co/dtpn1YZ/Screenshot-2020-04-22-at-09-03-15.png)
+![xcode image](../enabling-xcode-bg-service.png)
 
 A few resources to get you started if this is your first Flutter project:
 
