@@ -92,21 +92,8 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                         stopSelf()
                         PlaybackStatus.STOPPED
                     }
-                    Player.STATE_READY -> if (playWhenReady) {
-                        pushEvent(FLUTTER_RADIO_PLAYER_PLAYING)
-                        PlaybackStatus.PLAYING
-                    } else {
-                        pushEvent(FLUTTER_RADIO_PLAYER_PAUSED)
-                        PlaybackStatus.PAUSED
-                    }
-                    else -> {
-                        if (playbackStatus != PlaybackStatus.ERROR) {
-                            pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
-                            PlaybackStatus.IDLE
-                        } else {
-                            PlaybackStatus.ERROR
-                        }
-                    }
+                    Player.STATE_READY -> setPlayWhenReady(playWhenReady)
+                    else -> setPlayWhenReady(playWhenReady)
                 }
 
                 logger.info("onPlayerStateChanged: $playbackStatus")
@@ -204,6 +191,17 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player?.release()
 
         super.onDestroy()
+    }
+
+
+    fun setPlayWhenReady(playWhenReady: Boolean): PlaybackStatus {
+        return if (playWhenReady) {
+            pushEvent(FLUTTER_RADIO_PLAYER_PLAYING)
+            PlaybackStatus.PLAYING
+        } else {
+            pushEvent(FLUTTER_RADIO_PLAYER_PAUSED)
+            PlaybackStatus.PAUSED
+        }
     }
 
     override fun onAudioFocusChange(audioFocus: Int) {
