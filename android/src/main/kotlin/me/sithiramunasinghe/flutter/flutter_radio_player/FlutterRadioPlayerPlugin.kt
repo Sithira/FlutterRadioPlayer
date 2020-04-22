@@ -35,7 +35,7 @@ public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamH
     }
 
     const val broadcastActionName = "playback_status"
-    const val methodChannelName = "streaming_audio_player"
+    const val methodChannelName = "flutter_radio_player"
     const val eventChannelName = methodChannelName + "_stream"
 
     var isBound = false
