@@ -18,3 +18,12 @@
 
 * Fixed pubpec
 
+# 1.0.4
+
+Fixed bugs and slightly improved documentation.
+
+* Fixed an issue where player failed to bind to the application context.
+* Fixed an issue with EventSink.
+* Fixed a typo in the pubspec
+
+
