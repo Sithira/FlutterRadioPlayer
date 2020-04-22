@@ -7,6 +7,24 @@ Kindly look at the main.dart for further clarification.
 
 This project is a starting point for a Flutter application.
 
+If the plugin is failing to initiate, kindly make sure your permission for background processes are given for your application
+
+For your Android application you might want to add permissions in `AndroidManifest.xml`. This is already added for in the library level.
+```xml
+    <!--  Permissions for the plugin  -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--  Services for the plugin  -->
+    <application android:usesCleartextTraffic="true">
+        <service android:name=".core.StreamingCore"/>
+    </application>
+```
+
+For your iOS application you need to enable it like this
+
+! [xcode image] (https://i.ibb.co/dtpn1YZ/Screenshot-2020-04-22-at-09-03-15.png)
+
 A few resources to get you started if this is your first Flutter project:
 
 - [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)

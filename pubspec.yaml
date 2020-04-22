@@ -1,6 +1,6 @@
 name: flutter_radio_player
 description: Flutter radio plugin handles a single streaming media preciously.
-version: 1.0.3
+version: 1.0.4
 author: Sithira Munasinghe <sithiraac@gmail.com>
 homepage: https://github.com/Sithira/FlutterRadioPlayer
 
@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   flutter:
-    sdk: fluttery
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
