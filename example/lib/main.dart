@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:flutter_radio_player_example/test_page.dart';
 
 void main() => runApp(MyApp());
 
@@ -16,6 +17,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  int _currentIndex = 0;
+  final List<Widget> _children = [
+    new MyApp(),
+    new TestPage()
+  ];
+
   FlutterRadioPlayer _flutterRadioPlayer = new FlutterRadioPlayer();
 
   @override
@@ -27,9 +34,9 @@ class _MyAppState extends State<MyApp> {
   Future<void> initRadioService() async {
     try {
       await _flutterRadioPlayer.init(
-          "Flutter Radio Example", "Live", "URL_HERE", "true");
+          "Flutter Radio Example", "Live", "http://perseus.shoutca.st:9899/stream?type=http&nocache=1906", "false");
     } on PlatformException {
-      print("Exception occured while trying to register the services.");
+      print("Exception occurred while trying to register the services.");
     }
   }
 
@@ -104,6 +111,19 @@ class _MyAppState extends State<MyApp> {
             ],
           ),
         ),
+        bottomNavigationBar: new BottomNavigationBar(
+            currentIndex: this._currentIndex,
+            onTap: (int index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            items: [
+              BottomNavigationBarItem(
+                  icon: new Icon(Icons.home), title: new Text('Home')),
+              BottomNavigationBarItem(
+                  icon: new Icon(Icons.pages), title: new Text('Second Page'))
+            ]),
       ),
     );
   }
