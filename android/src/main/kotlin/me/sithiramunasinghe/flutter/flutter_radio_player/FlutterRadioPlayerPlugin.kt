@@ -1,7 +1,9 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
 import android.content.*
+import android.content.ContentValues.TAG
 import android.os.IBinder
+import android.util.Log
 import androidx.annotation.NonNull
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -20,12 +22,13 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethod
 import java.util.logging.Logger
 
 /** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamHandler {
+public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler {
   private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
 
   private lateinit var methodChannel: MethodChannel
 
   private var mEventSink: EventSink? = null
+  private var mEventChangedMetadataSink: EventSink? = null
 
   companion object {
     @JvmStatic
@@ -35,8 +38,11 @@ public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamH
     }
 
     const val broadcastActionName = "playback_status"
+    const val broadcastChangedMetaDataName = "changed_meta_data"
     const val methodChannelName = "flutter_radio_player"
     const val eventChannelName = methodChannelName + "_stream"
+    const val eventChannelMetaDataName = "metaDataStream"
+
 
     var isBound = false
     lateinit var applicationContext: Context
@@ -94,16 +100,10 @@ public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamH
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
     LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiver)
-    //methodChannel = null
+    LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiverChangedMetaData)
   }
 
-  override fun onListen(arguments: Any?, events: EventSink?) {
-    mEventSink = events
-  }
 
-  override fun onCancel(arguments: Any?) {
-    mEventSink = null
-  }
 
   private fun buildEngine(context: Context, messenger: BinaryMessenger) {
 
@@ -115,16 +115,47 @@ public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamH
     applicationContext = context
     serviceIntent = Intent(applicationContext, StreamingCore::class.java)
 
-    logger.info("Setting up event channel to receive events")
-    val eventChannel = EventChannel(messenger, eventChannelName)
-    eventChannel.setStreamHandler(this)
+
+    initEventChannelStatus(messenger)
+    initEventChannelMetaData(messenger)
+
 
     logger.info("Setting up broadcast receiver with event sink")
     LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiver, IntentFilter(broadcastActionName))
+    LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiverChangedMetaData, IntentFilter(broadcastChangedMetaDataName))
 
     logger.info("Streaming Audio Player Engine Build Complete...")
 
   }
+
+  private fun initEventChannelStatus(messenger: BinaryMessenger) {
+    logger.info("Setting up event channel to receive events")
+    val eventChannel = EventChannel(messenger, eventChannelName)
+    eventChannel.setStreamHandler(object : StreamHandler {
+      override fun onListen(arguments: Any?, events: EventSink?) {
+        mEventSink = events
+      }
+
+      override fun onCancel(arguments: Any?) {
+        mEventSink = null
+      }
+    })
+  }
+
+  private fun initEventChannelMetaData(messenger: BinaryMessenger) {
+    logger.info("Setting up event channel to receive metadata")
+    val eventChannel = EventChannel(messenger, eventChannelMetaDataName)
+    eventChannel.setStreamHandler(object : StreamHandler {
+      override fun onListen(arguments: Any?, events: EventSink?) {
+        mEventChangedMetadataSink = events
+      }
+
+      override fun onCancel(arguments: Any?) {
+        mEventChangedMetadataSink = null
+      }
+    })
+  }
+
 
   private fun buildPlayerDetailsMeta(methodCall: MethodCall): PlayerItem {
 
@@ -225,6 +256,21 @@ public class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler, StreamH
         val returnStatus = intent.getStringExtra("status")
         logger.info("Received status: $returnStatus")
         mEventSink?.success(returnStatus)
+
+      }
+    }
+  }
+
+  /**
+   * Broadcast receiver for changed track and metadata
+   */
+  private var broadcastReceiverChangedMetaData = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent != null) {
+        val changedMetaData = intent.getStringExtra("changedMetaData")
+
+        logger.info("changedMetaData: $changedMetaData")
+        mEventChangedMetadataSink?.success(changedMetaData)
       }
     }
   }

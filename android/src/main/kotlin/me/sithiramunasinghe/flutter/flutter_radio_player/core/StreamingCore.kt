@@ -26,6 +26,7 @@ import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.broadcastActionName
+import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.broadcastChangedMetaDataName
 import me.sithiramunasinghe.flutter.flutter_radio_player.R
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlaybackStatus
 import java.util.logging.Logger
@@ -42,6 +43,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     // context
     private val context = this
     private val broadcastIntent = Intent(broadcastActionName)
+    private val broadcastChangedMetaData = Intent(broadcastChangedMetaDataName)
 
     // class instances
     private var player: SimpleExoPlayer? = null
@@ -111,6 +113,12 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             it.addListener(playerEvents)
             it.playWhenReady = playWhenReady
             it.prepare(audioSource)
+        }
+
+        // register our meta data listener
+        player?.addMetadataOutput {
+            val metaData = it.get(0).toString()
+            localBroadcastManager.sendBroadcast(broadcastChangedMetaData.putExtra("changedMetaData", metaData))
         }
 
         val playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(

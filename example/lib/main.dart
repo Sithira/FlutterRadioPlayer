@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
 
@@ -100,7 +100,17 @@ class _MyAppState extends State<MyApp> {
                         widget.volume = value;
                         _flutterRadioPlayer.setVolume(widget.volume);
                       })),
-              Text("Volume: " + (widget.volume * 100).toStringAsFixed(0))
+              Text("Volume: " + (widget.volume * 100).toStringAsFixed(0)),
+              SizedBox(
+                height: 15,
+              ),
+              Text("Metadata Track "),
+              StreamBuilder<String>(
+                  initialData: "",
+                  stream: _flutterRadioPlayer.metaDataStream,
+                  builder: (context, snapshot) {
+                    return Text(snapshot.data);
+                  }),
             ],
           ),
         ),
