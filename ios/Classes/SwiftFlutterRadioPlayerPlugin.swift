@@ -1,11 +1,12 @@
 import Flutter
 import UIKit
 
-public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
     
   private var streamingCore: StreamingCore = StreamingCore()
   
-  private var mEventSink: FlutterEventSink?
+  public static var mEventSink: FlutterEventSink?
+  public static var eventSinkMetadata: FlutterEventSink?
   
   public static func register(with registrar: FlutterPluginRegistrar) {
       let channel = FlutterMethodChannel(name: "flutter_radio_player", binaryMessenger: registrar.messenger())
@@ -14,7 +15,10 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin, FlutterStre
       
       // register the event channel
       let eventChannel = FlutterEventChannel(name: "flutter_radio_player_stream", binaryMessenger: registrar.messenger())
-      eventChannel.setStreamHandler(instance)
+      eventChannel.setStreamHandler(StatusStreamHandler())
+    
+      let eventChannelMetadata = FlutterEventChannel(name: "metaDataStream", binaryMessenger: registrar.messenger())
+      eventChannelMetadata.setStreamHandler(MetaDataStreamHandler())
   }
   
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -80,24 +84,44 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin, FlutterStre
           result(nil)
       }
   }
-  
-  public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-      if (mEventSink == nil) {
-          mEventSink = events
-      }
-      return nil
-  }
-  
-  public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-      mEventSink = nil
-      return nil
-  }
-  
+
   @objc private func onRecieve(_ notification: Notification) {
       // unwrapping optional
       if let playerEvent = notification.userInfo!["status"] {
           print("Notification received with event name: \(playerEvent)")
-          mEventSink!(playerEvent)
+         SwiftFlutterRadioPlayerPlugin.mEventSink?(playerEvent)
       }
+    
+        if let metaDataEvent = notification.userInfo!["metadata"] {
+            print("Notification received with metada: \(metaDataEvent)")
+            SwiftFlutterRadioPlayerPlugin.eventSinkMetadata?(metaDataEvent as! String)
+        }
+    
   }
+}
+
+
+
+class StatusStreamHandler: NSObject, FlutterStreamHandler {
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        SwiftFlutterRadioPlayerPlugin.mEventSink = events
+        return nil;
+    }
+    
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+           SwiftFlutterRadioPlayerPlugin.mEventSink = nil
+        return nil;
+    }
+}
+
+class MetaDataStreamHandler: NSObject, FlutterStreamHandler {
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        SwiftFlutterRadioPlayerPlugin.eventSinkMetadata = events
+        return nil;
+    }
+    
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+           SwiftFlutterRadioPlayerPlugin.eventSinkMetadata = nil
+        return nil;
+    }
 }
