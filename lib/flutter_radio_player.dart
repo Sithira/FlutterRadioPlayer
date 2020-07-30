@@ -54,6 +54,13 @@ class FlutterRadioPlayer {
     await _channel.invokeMethod("setVolume", {"volume": volume});
   }
 
+  Future<void> setUrl(String streamUrl, String playWhenReady) async {
+    await _channel.invokeMethod("setUrl", {
+      "playWhenReady": playWhenReady,
+      "streamUrl": streamUrl
+    });
+  }
+
   /// Get the player stream.
   Stream<String> get isPlayingStream {
     if (_isPlayingStream == null) {

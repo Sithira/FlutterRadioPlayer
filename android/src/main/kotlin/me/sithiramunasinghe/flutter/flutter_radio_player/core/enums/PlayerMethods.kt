@@ -6,6 +6,7 @@ enum class PlayerMethods(val value: String) {
     PLAY("play"),
     PAUSE("pause"),
     STOP("stop"),
+    SET_URL("setUrl"),
     IS_PLAYING("isPlaying"),
     SET_VOLUME("setVolume")
 }

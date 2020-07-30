@@ -37,6 +37,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     private var isBound = false
     private val iBinder = LocalBinder()
     private lateinit var playbackStatus: PlaybackStatus
+    private lateinit var dataSourceFactory: DefaultDataSourceFactory
     private lateinit var localBroadcastManager: LocalBroadcastManager
 
     // context
@@ -59,6 +60,46 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             get() = this@StreamingCore
     }
 
+    /*===========================
+     *        Player APIS
+     *===========================
+     */
+
+    fun play() {
+        logger.info("playing audio $player ...")
+        player?.playWhenReady = true
+    }
+
+    fun pause() {
+        logger.info("pausing audio...")
+        player?.playWhenReady = false
+    }
+
+    fun isPlaying(): Boolean {
+        val isPlaying = this.playbackStatus == PlaybackStatus.PLAYING
+        logger?.info("is playing status: $isPlaying")
+        return isPlaying
+    }
+
+    fun stop() {
+        logger.info("stopping audio $player ...")
+        player?.stop()
+        stopSelf()
+        isBound = false
+    }
+
+    fun setVolume(volume: Double) {
+        logger.info("Changing volume to : $volume")
+        player?.volume = volume.toFloat()
+    }
+
+    fun setUrl(streamUrl: String, playWhenReady: Boolean) {
+        logger.info("ReadyPlay status: $playWhenReady")
+        logger.info("Set stream URL: $streamUrl")
+        player?.prepare(buildMediaSource(dataSourceFactory, streamUrl))
+        player?.playWhenReady = playWhenReady
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         logger.info("Firing up service. (onStartCommand)...")
@@ -75,7 +116,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         player = SimpleExoPlayer.Builder(context).build()
 
-        val dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
+        dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
 
         val audioSource = buildMediaSource(dataSourceFactory, streamUrl)
 
@@ -87,12 +128,13 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                         pushEvent(FLUTTER_RADIO_PLAYER_LOADING)
                         PlaybackStatus.LOADING
                     }
-                    Player.STATE_ENDED -> {
+                    Player.STATE_IDLE -> {
                         pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
-                        stopSelf()
                         PlaybackStatus.STOPPED
                     }
-                    Player.STATE_READY -> setPlayWhenReady(playWhenReady)
+                    Player.STATE_READY -> {
+                        setPlayWhenReady(playWhenReady)
+                    }
                     else -> setPlayWhenReady(playWhenReady)
                 }
 
@@ -142,8 +184,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                 object : PlayerNotificationManager.NotificationListener {
                     override fun onNotificationCancelled(notificationId: Int, dismissedByUser: Boolean) {
                         logger.info("Notification Cancelled. Stopping player...")
-                        isBound = false
-                        stopSelf()
+                        stop()
                     }
 
                     override fun onNotificationPosted(notificationId: Int, notification: Notification, ongoing: Boolean) {
@@ -193,17 +234,6 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         super.onDestroy()
     }
 
-
-    fun setPlayWhenReady(playWhenReady: Boolean): PlaybackStatus {
-        return if (playWhenReady) {
-            pushEvent(FLUTTER_RADIO_PLAYER_PLAYING)
-            PlaybackStatus.PLAYING
-        } else {
-            pushEvent(FLUTTER_RADIO_PLAYER_PAUSED)
-            PlaybackStatus.PAUSED
-        }
-    }
-
     override fun onAudioFocusChange(audioFocus: Int) {
         when (audioFocus) {
 
@@ -231,6 +261,14 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     }
 
     /**
+     * Push events to local broadcaster service.
+     */
+    private fun pushEvent(eventName: String) {
+        logger.info("Pushing Event: $eventName")
+        localBroadcastManager.sendBroadcast(broadcastIntent.putExtra("status", eventName))
+    }
+
+    /**
      * Build the media source depending of the URL content type.
      */
     private fun buildMediaSource(dataSourceFactory: DefaultDataSourceFactory, streamUrl: String): MediaSource {
@@ -246,35 +284,14 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         }
     }
 
-    private fun pushEvent(eventName: String) {
-        logger.info("Pushing Event: $eventName")
-        localBroadcastManager.sendBroadcast(broadcastIntent.putExtra("status", eventName))
-    }
-
-    fun pause() {
-        logger.info("pausing audio...")
-        player?.playWhenReady = false
-    }
-
-    fun play() {
-        logger.info("playing audio $player ...")
-        player?.playWhenReady = true
-    }
-
-    fun stop() {
-        logger.info("stopping audio $player ...")
-        player?.stop()
-    }
-
-    fun isPlaying(): Boolean {
-        val isPlaying = this.playbackStatus == PlaybackStatus.PLAYING
-        logger?.info("is playing status: $isPlaying")
-        return isPlaying
-    }
-
-    fun setVolume(volume: Double) {
-        logger.info("Changing volume to : $volume")
-        player?.volume = volume.toFloat()
+    private fun setPlayWhenReady(playWhenReady: Boolean): PlaybackStatus {
+        return if (playWhenReady) {
+            pushEvent(FLUTTER_RADIO_PLAYER_PLAYING)
+            PlaybackStatus.PLAYING
+        } else {
+            pushEvent(FLUTTER_RADIO_PLAYER_PAUSED)
+            PlaybackStatus.PAUSED
+        }
     }
 
 }
