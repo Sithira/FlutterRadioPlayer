@@ -20,7 +20,6 @@ class _MyAppState extends State<MyApp> {
   int _currentIndex = 0;
   final List<Widget> _children = [
     new MyApp(),
-    new TestPage()
   ];
 
   FlutterRadioPlayer _flutterRadioPlayer = new FlutterRadioPlayer();

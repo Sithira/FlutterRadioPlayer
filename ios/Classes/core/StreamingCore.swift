@@ -89,6 +89,19 @@ class StreamingCore : NSObject {
         avPlayer?.volume = formattedVolume
     }
     
+    func setUrl(streamURL: String, playWhenReady: String) -> Void {
+        let streamURLInstance = URL(string: streamURL)
+        avPlayer?.replaceCurrentItem(with: AVPlayerItem(url: streamURLInstance!))
+        
+        if playWhenReady == "true" {
+            self.playWhenReady = true
+            play()
+        } else {
+            self.playWhenReady = false
+            pause()
+        }
+    }
+    
     private func pushEvent(eventName: String) {
         print("Pushing event: \(eventName)")
         NotificationCenter.default.post(name: Notifications.playbackNotification, object: nil, userInfo: ["status": eventName])

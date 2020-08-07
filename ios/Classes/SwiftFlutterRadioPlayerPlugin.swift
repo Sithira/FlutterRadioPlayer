@@ -76,6 +76,15 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin, FlutterStre
               streamingCore.setVolume(volume: volume)
           }
           result(nil)
+      case "setUrl":
+        if let args = call.arguments as? Dictionary<String, Any>,
+            let streamURL = args["streamURL"] as? String,
+            let playWhenReady = args["playWhenReady"] as? String
+        {
+            print("method called to setUrl")
+            streamingCore.setUrl(streamURL: streamURL, playWhenReady: playWhenReady)
+        }
+        result(nil)
       default:
           result(nil)
       }
