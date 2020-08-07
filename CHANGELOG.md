@@ -26,4 +26,11 @@ Fixed bugs and slightly improved documentation.
 * Fixed an issue with EventSink.
 * Fixed a typo in the pubspec
 
+# 1.0.5
+
+Fixed bugs, reorganized code and improved documentation.
+
+* Added setUrl method to dynamically change the playing URL.
+* Improved documentation. 
+
 
