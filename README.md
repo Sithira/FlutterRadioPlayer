@@ -1,6 +1,6 @@
 ![logo](flutter_radio_player_logo.png)
 
-# Flutter Radio Player Plugin
+# 
 
 Flutter radio plugin handles a single streaming media preciously. This plugin was developed with maximum usage in mind.
 Flutter Radio player enables Streaming audio content on both Android and iOS natively, as an added feature this plugin supports
@@ -72,15 +72,15 @@ await _flutterRadioPlayer.setUrl('URL_HERE', "false");
 calling above method will cause the existing URL to pause and play the newly set URL. Please refer the [FRP API](https://pub.dev/documentation/flutter_radio_player/latest/) for api documentation.
 
 Besides above mentioned method, below are the methods that FRP exposes.
-* stop() - Will stop all the streaming audio streams and detaches itself from `FOREGROUND SERVICE`. You need to reinitialize to  use the plugin again, 
+* ```stop()``` - Will stop all the streaming audio streams and detaches itself from `FOREGROUND SERVICE`. You need to reinitialize to  use the plugin again, 
 ```dart
 await _flutterRadioPlayer.stop()
 ``` 
-* start() - Will start the audio stream using the initialized object.
+* ```start()``` - Will start the audio stream using the initialized object.
 ```dart
 await _flutterRadioPlayer.start()
 ``` 
-* pause() - Will pause the audio stream using the initialized object.
+* ```pause()``` - Will pause the audio stream using the initialized object.
 ```dart
 await _flutterRadioPlayer.pause()
 ``` 
