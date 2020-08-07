@@ -9,7 +9,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 
-class StreamingCore : NSObject {
+class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
     
     private var avPlayer: AVPlayer?
     private var avPlayerItem: AVPlayerItem?
@@ -33,17 +33,32 @@ class StreamingCore : NSObject {
         avPlayerItem = AVPlayerItem(url: streamURLInstance!)
         avPlayer = AVPlayer(playerItem: avPlayerItem!)
         
+        //Listener for metadata from streaming
+        let metadataOutput = AVPlayerItemMetadataOutput(identifiers: nil)
+        metadataOutput.setDelegate(self, queue: DispatchQueue.main)
+        avPlayerItem?.add(metadataOutput)
+        
         if playWhenReady == "true" {
             print("PlayWhenReady: true")
             self.playWhenReady = true
         }
-        
+
         // initialize player observers
         initPlayerObservers()
         
         // init Remote protocols.
         initRemoteTransportControl(appName: serviceName, subTitle: secondTitle);
     }
+    
+    func metadataOutput(_ output: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from track: AVPlayerItemTrack?) {
+      if let item = groups.first?.items.first // make this an AVMetadata item
+      {
+          item.value(forKeyPath: "value")
+          let song = (item.value(forKeyPath: "value")!)
+         pushEvent(typeEvent: "metadata",eventName: song as! String)
+
+            
+        }}
     
     func play() -> PlayerStatus {
         print("invoking play method on service")
@@ -102,9 +117,9 @@ class StreamingCore : NSObject {
         }
     }
     
-    private func pushEvent(eventName: String) {
+    private func pushEvent(typeEvent : String = "status", eventName: String) {
         print("Pushing event: \(eventName)")
-        NotificationCenter.default.post(name: Notifications.playbackNotification, object: nil, userInfo: ["status": eventName])
+        NotificationCenter.default.post(name: Notifications.playbackNotification, object: nil, userInfo: [typeEvent: eventName])
     }
     
     private func initRemoteTransportControl(appName: String, subTitle: String) {

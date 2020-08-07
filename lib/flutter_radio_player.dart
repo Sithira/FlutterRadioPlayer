@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 
 class FlutterRadioPlayer {
   static const MethodChannel _channel =
-      const MethodChannel('flutter_radio_player');
+  const MethodChannel('flutter_radio_player');
 
   static const EventChannel _eventChannel =
-      const EventChannel("flutter_radio_player_stream");
+  const EventChannel("flutter_radio_player_stream");
+
+  static const EventChannel _eventChannelMetaData =
+  const EventChannel("metaDataStream");
 
   // constants to support event channel
   static const flutter_radio_stopped = "flutter_radio_stopped";
@@ -17,6 +20,7 @@ class FlutterRadioPlayer {
   static const flutter_radio_loading = "flutter_radio_loading";
 
   static Stream<String> _isPlayingStream;
+  static Stream<String> _metaDataStream;
 
   Future<void> init(String appName, String subTitle, String streamURL,
       String playWhenReady) async {
@@ -68,6 +72,15 @@ class FlutterRadioPlayer {
           _eventChannel.receiveBroadcastStream().map<String>((value) => value);
     }
     return _isPlayingStream;
+  }
+
+  Stream<String> get metaDataStream {
+    if (_metaDataStream == null) {
+      _metaDataStream =
+          _eventChannelMetaData.receiveBroadcastStream().map<String>((value) => value);
+    }
+
+    return _metaDataStream;
   }
 }
 

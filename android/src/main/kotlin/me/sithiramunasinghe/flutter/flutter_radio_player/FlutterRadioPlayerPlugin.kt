@@ -20,12 +20,13 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethod
 import java.util.logging.Logger
 
 /** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler {
+public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
 
     private lateinit var methodChannel: MethodChannel
 
     private var mEventSink: EventSink? = null
+    private var mEventMetaDataSink: EventSink? = null
 
     companion object {
         @JvmStatic
@@ -35,8 +36,11 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
         }
 
         const val broadcastActionName = "playback_status"
+        const val broadcastChangedMetaDataName = "changed_meta_data"
         const val methodChannelName = "flutter_radio_player"
         const val eventChannelName = methodChannelName + "_stream"
+        const val eventChannelMetaDataName = methodChannelName + "_meta_stream"
+
 
         var isBound = false
         lateinit var applicationContext: Context
@@ -46,20 +50,6 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         buildEngine(flutterPluginBinding.applicationContext, flutterPluginBinding.binaryMessenger)
-    }
-
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        methodChannel.setMethodCallHandler(null)
-        LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiver)
-        //methodChannel = null
-    }
-
-    override fun onListen(arguments: Any?, events: EventSink?) {
-        mEventSink = events
-    }
-
-    override fun onCancel(arguments: Any?) {
-        mEventSink = null
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -94,21 +84,92 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
                 init(call)
                 result.success(null)
             }
-            PlayerMethods.SET_URL.value -> {
-                logger.info("Set url invoked")
-                val url = call.argument<String>("streamURL")!!
-                val playWhenReady = call.argument<String>("playWhenReady")!!
-                setUrl(url, playWhenReady)
-            }
             PlayerMethods.SET_VOLUME.value -> {
                 val volume = call.argument<Double>("volume")!!
                 logger.info("Changing volume to: $volume")
                 setVolume(volume)
                 result.success(null)
             }
+            PlayerMethods.SET_URL.value -> {
+                logger.info("Set url invoked")
+                val url = call.argument<String>("streamURL")!!
+                val playWhenReady = call.argument<String>("playWhenReady")!!
+                setUrl(url, playWhenReady)
+            }
             else -> result.notImplemented()
         }
 
+    }
+
+    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+        methodChannel.setMethodCallHandler(null)
+        LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiver)
+        LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiverMetaDetails)
+    }
+
+
+    private fun buildEngine(context: Context, messenger: BinaryMessenger) {
+
+        logger.info("Building Streaming Audio Core...")
+        methodChannel = MethodChannel(messenger, methodChannelName)
+        methodChannel.setMethodCallHandler(this)
+
+        logger.info("Setting Application Context")
+        applicationContext = context
+        serviceIntent = Intent(applicationContext, StreamingCore::class.java)
+
+
+        initEventChannelStatus(messenger)
+        initEventChannelMetaData(messenger)
+
+
+        logger.info("Setting up broadcast receiver with event sink")
+        LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiver, IntentFilter(broadcastActionName))
+        LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiverMetaDetails, IntentFilter(broadcastChangedMetaDataName))
+
+        logger.info("Streaming Audio Player Engine Build Complete...")
+
+    }
+
+    private fun initEventChannelStatus(messenger: BinaryMessenger) {
+        logger.info("Setting up event channel to receive events")
+        val eventChannel = EventChannel(messenger, eventChannelName)
+        eventChannel.setStreamHandler(object : StreamHandler {
+            override fun onListen(arguments: Any?, events: EventSink?) {
+                mEventSink = events
+            }
+
+            override fun onCancel(arguments: Any?) {
+                mEventSink = null
+            }
+        })
+    }
+
+    private fun initEventChannelMetaData(messenger: BinaryMessenger) {
+        logger.info("Setting up event channel to receive metadata")
+        val eventChannel = EventChannel(messenger, eventChannelMetaDataName)
+        eventChannel.setStreamHandler(object : StreamHandler {
+            override fun onListen(arguments: Any?, events: EventSink?) {
+                mEventMetaDataSink = events
+            }
+
+            override fun onCancel(arguments: Any?) {
+                mEventMetaDataSink = null
+            }
+        })
+    }
+
+
+    private fun buildPlayerDetailsMeta(methodCall: MethodCall): PlayerItem {
+
+        logger.info("Mapping method call to player item object")
+
+        val url = methodCall.argument<String>("streamURL")
+        val appName = methodCall.argument<String>("appName")
+        val subTitle = methodCall.argument<String>("subTitle")
+        val playWhenReady = methodCall.argument<String>("playWhenReady")
+
+        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!)
     }
 
     /*===========================
@@ -143,11 +204,6 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
         coreService.play()
     }
 
-    private fun setUrl(streamUrl: String, playWhenReady: String) {
-        val playStatus: Boolean = playWhenReady == "true"
-        coreService.setUrl(streamUrl, playStatus)
-    }
-
     private fun pause() {
         logger.info("Attempting to pause music....")
         coreService.pause()
@@ -158,6 +214,11 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
         isBound = false
         applicationContext.unbindService(serviceConnection)
         coreService.stop()
+    }
+
+    private fun setUrl(streamUrl: String, playWhenReady: String) {
+        val playStatus: Boolean = playWhenReady == "true"
+        coreService.setUrl(streamUrl, playStatus)
     }
 
     private fun setVolume(volume: Double) {
@@ -174,39 +235,6 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
         intent.putExtra("subTitle", playerItem.subTitle)
         intent.putExtra("playWhenReady", playerItem.playWhenReady)
         return intent
-    }
-
-    private fun buildEngine(context: Context, messenger: BinaryMessenger) {
-
-        logger.info("Building Streaming Audio Core...")
-        methodChannel = MethodChannel(messenger, methodChannelName)
-        methodChannel.setMethodCallHandler(this)
-
-        logger.info("Setting Application Context")
-        applicationContext = context
-        serviceIntent = Intent(applicationContext, StreamingCore::class.java)
-
-        logger.info("Setting up event channel to receive events")
-        val eventChannel = EventChannel(messenger, eventChannelName)
-        eventChannel.setStreamHandler(this)
-
-        logger.info("Setting up broadcast receiver with event sink")
-        LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiver, IntentFilter(broadcastActionName))
-
-        logger.info("Streaming Audio Player Engine Build Complete...")
-
-    }
-
-    private fun buildPlayerDetailsMeta(methodCall: MethodCall): PlayerItem {
-
-        logger.info("Mapping method call to player item object")
-
-        val url = methodCall.argument<String>("streamURL")
-        val appName = methodCall.argument<String>("appName")
-        val subTitle = methodCall.argument<String>("subTitle")
-        val playWhenReady = methodCall.argument<String>("playWhenReady")
-
-        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!)
     }
 
     /**
@@ -236,6 +264,20 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Stream
                 val returnStatus = intent.getStringExtra("status")
                 logger.info("Received status: $returnStatus")
                 mEventSink?.success(returnStatus)
+
+            }
+        }
+    }
+
+    /**
+     * Broadcast receiver for changed track and metadata
+     */
+    private var broadcastReceiverMetaDetails = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null) {
+                val receivedMeta = intent.getStringExtra("meta_data")
+                logger.info("Received meta: $receivedMeta")
+                mEventMetaDataSink?.success(receivedMeta)
             }
         }
     }
