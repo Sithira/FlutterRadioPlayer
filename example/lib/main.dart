@@ -117,6 +117,9 @@ class _MyAppState extends State<MyApp> {
                   builder: (context, snapshot) {
                     return Text(snapshot.data);
                   }),
+              RaisedButton(child: Text("Change URL"), onPressed: () async {
+                _flutterRadioPlayer.setUrl("http://209.133.216.3:7018/;stream.mp3", "false");
+              })
             ],
           ),
         ),

@@ -92,7 +92,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
             }
             PlayerMethods.SET_URL.value -> {
                 logger.info("Set url invoked")
-                val url = call.argument<String>("streamURL")!!
+                val url = call.argument<String>("streamUrl")!!
                 val playWhenReady = call.argument<String>("playWhenReady")!!
                 setUrl(url, playWhenReady)
             }

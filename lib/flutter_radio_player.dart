@@ -10,7 +10,7 @@ class FlutterRadioPlayer {
   const EventChannel("flutter_radio_player_stream");
 
   static const EventChannel _eventChannelMetaData =
-  const EventChannel("metaDataStream");
+  const EventChannel("flutter_radio_player_meta_stream");
 
   // constants to support event channel
   static const flutter_radio_stopped = "flutter_radio_stopped";

@@ -76,13 +76,13 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
             print("method called to setVolume from service")
             if let args = call.arguments as? Dictionary<String, Any>,
                 let volume = args["volume"] as? NSNumber {
-                print("Recieved set to volume: \(volume)")
+                print("Received set to volume: \(volume)")
                 streamingCore.setVolume(volume: volume)
             }
             result(nil)
         case "setUrl":
             if let args = call.arguments as? Dictionary<String, Any>,
-                let streamURL = args["streamURL"] as? String,
+                let streamURL = args["streamUrl"] as? String,
                 let playWhenReady = args["playWhenReady"] as? String
             {
                 print("method called to setUrl")
