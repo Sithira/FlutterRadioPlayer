@@ -33,4 +33,8 @@ Fixed bugs, reorganized code and improved documentation.
 * Added setUrl method to dynamically change the playing URL.
 * Improved documentation. 
 
+# 1.0.6
+
+* Fixed media meta-data bug and dynamic URL changing issue.
+
 
