@@ -55,7 +55,7 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
       {
           item.value(forKeyPath: "value")
           let song = (item.value(forKeyPath: "value")!)
-         pushEvent(typeEvent: "metadata",eventName: song as! String)
+         pushEvent(typeEvent: "meta_data",eventName: song as! String)
 
             
         }}

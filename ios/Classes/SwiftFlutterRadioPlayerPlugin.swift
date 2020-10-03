@@ -17,7 +17,7 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
         let eventChannel = FlutterEventChannel(name: "flutter_radio_player_stream", binaryMessenger: registrar.messenger())
         eventChannel.setStreamHandler(StatusStreamHandler())
         
-        let eventChannelMetadata = FlutterEventChannel(name: "metaDataStream", binaryMessenger: registrar.messenger())
+        let eventChannelMetadata = FlutterEventChannel(name: "flutter_radio_player_meta_stream", binaryMessenger: registrar.messenger())
         eventChannelMetadata.setStreamHandler(MetaDataStreamHandler())
     }
     

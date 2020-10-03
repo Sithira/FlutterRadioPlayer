@@ -37,4 +37,8 @@ Fixed bugs, reorganized code and improved documentation.
 
 * Fixed media meta-data bug and dynamic URL changing issue.
 
+# 1.0.7
+
+* Fixed media meta-data on iOS
+
 
