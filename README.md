@@ -1,5 +1,10 @@
 ![logo](flutter_radio_player_logo.png)
 
+[![likes](https://badges.bar/flutter_radio_player/likes)](https://pub.dev/packages/flutter_radio_player/score)
+[![popularity](https://badges.bar/flutter_radio_player/popularity)](https://pub.dev/packages/flutter_radio_player/score)
+[![pub points](https://badges.bar/flutter_radio_player/pub%20points)](https://pub.dev/packages/flutter_radio_player/score)
+
+
 # 
 
 Flutter radio plugin handles a single streaming media preciously. This plugin was developed with maximum usage in mind.
