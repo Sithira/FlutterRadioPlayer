@@ -50,5 +50,6 @@ dependencies {
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     implementation "com.google.android.exoplayer:exoplayer:$exo_player_version"
     implementation "com.google.android.exoplayer:extension-mediasession:$exo_player_version"
+    compileOnly files('tmplibs/flutter.jar')
 
 }
