@@ -106,6 +106,8 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
         }
         player?.playWhenReady = true
+        wasPlaying = false
+
     }
 
     fun pause() {
@@ -118,6 +120,8 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         logger?.info("is playing status: $isPlaying")
         return isPlaying
     }
+
+    var wasPlaying: Boolean = false
 
     fun stop() {
         logger.info("stopping audio $player ...")
@@ -203,7 +207,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                     }
                     else -> setPlayWhenReady(playWhenReady)
                 }
-                if (playbackStatus == PlaybackStatus.PLAYING){
+                if (playbackStatus == PlaybackStatus.PLAYING) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         this@StreamingCore.audioManager!!.requestAudioFocus(this@StreamingCore.focusRequest!!)
                     } else {
@@ -323,7 +327,9 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
             AudioManager.AUDIOFOCUS_GAIN -> {
                 player?.volume = 0.8f
-                play()
+                if (wasPlaying) {
+                    play()
+                }
             }
 
             AudioManager.AUDIOFOCUS_LOSS -> {
@@ -333,6 +339,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 if (isPlaying()) {
                     pause()
+                    wasPlaying = true
                 }
             }
 
