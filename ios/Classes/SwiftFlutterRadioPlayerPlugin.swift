@@ -52,6 +52,16 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
             }
             result(false)
             break
+       case "setTitle":
+            print("method called to set title from service")
+          if let args = call.arguments as? Dictionary<String, Any>,
+                        let title = args["title"] as? String,
+                        let subTitle = args["subtitle"] as? String
+                    {
+            streamingCore.setTitle(title:title,subTitle:subTitle)
+           }
+            result(false)
+            break
         case "pause":
             print("method called to play from service")
             let status = streamingCore.pause()

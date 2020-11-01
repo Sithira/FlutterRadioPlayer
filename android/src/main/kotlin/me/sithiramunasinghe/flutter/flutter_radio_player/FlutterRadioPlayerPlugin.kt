@@ -1,12 +1,13 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
-import android.annotation.TargetApi
 import android.app.Activity
 import android.content.*
-import android.os.Build
+import android.content.res.AssetFileDescriptor
+import android.content.res.AssetManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.IBinder
 import androidx.annotation.NonNull
-import androidx.collection.ArrayMap
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -23,8 +24,9 @@ import io.flutter.plugin.common.PluginRegistry.Registrar
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlayerItem
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.StreamingCore
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethods
-import java.lang.reflect.Field
+import java.util.*
 import java.util.logging.Logger
+import kotlin.concurrent.schedule
 
 
 /** FlutterRadioPlayerPlugin */
@@ -55,6 +57,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         var isBound = false
         lateinit var applicationContext: Context
         lateinit var coreService: StreamingCore
+         var bitmap: Bitmap? = null
         lateinit var serviceIntent: Intent
     }
 
@@ -90,6 +93,13 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
                 stop()
                 result.success(null)
             }
+            PlayerMethods.SET_TITLE.value -> {
+                logger.info("setTitle service invoked")
+                val title = call.argument<String>("title")!!
+                val subTitle = call.argument<String>("subtitle")!!
+                coreService.setTitle(title,subTitle)
+                result.success(null)
+            }
             PlayerMethods.INIT.value -> {
                 logger.info("start service invoked")
                 init(call)
@@ -104,6 +114,12 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
             PlayerMethods.SET_URL.value -> {
                 logger.info("Set url invoked")
                 val url = call.argument<String>("streamUrl")!!
+                val coverByteArray = call.argument<ByteArray>("coverImage")
+                if (coverByteArray != null){
+                    bitmap = BitmapFactory.decodeByteArray(coverByteArray,0 ,coverByteArray.size)
+                    coreService.iconBitmap = bitmap
+                }
+
                 val playWhenReady = call.argument<String>("playWhenReady")!!
                 setUrl(url, playWhenReady)
             }
@@ -189,13 +205,24 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
 
     private fun init(methodCall: MethodCall) {
         logger.info("Attempting to initialize service...")
+
+        val coverByteArray = methodCall.argument<ByteArray>("coverImage")
+        if (coverByteArray != null){
+            bitmap = BitmapFactory.decodeByteArray(coverByteArray,0 ,coverByteArray.size)
+        }
+
         if (!isBound) {
             logger.info("Service not bound, binding now....")
             serviceIntent = setIntentData(serviceIntent, buildPlayerDetailsMeta(methodCall))
             applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT)
             applicationContext.startService(serviceIntent)
+        } else {
+            Timer("SettingUp", false).schedule(500) {
+                coreService.reEmmitSatus()
+            }
         }
     }
+
 
     private fun isPlaying(): Boolean {
         logger.info("Attempting to get playing status....")
@@ -254,6 +281,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
             // coreService = null
+            logger.info("Service Disconnected...")
         }
 
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -261,8 +289,12 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
             coreService = localBinder.service
             coreService.activity = this@FlutterRadioPlayerPlugin.activity
             isBound = true
+            coreService.reEmmitSatus()
             logger.info("Service Connection Established...")
             logger.info("Service bounded...")
+
+            coreService.iconBitmap = bitmap
+
         }
     }
 

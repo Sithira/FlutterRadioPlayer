@@ -1,9 +1,6 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player.core
 
-import android.app.Activity
-import android.app.Notification
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -18,11 +15,9 @@ import android.os.Handler
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.Nullable
+import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.ExoPlaybackException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
@@ -41,6 +36,8 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
     private var logger = Logger.getLogger(StreamingCore::javaClass.name)
     var activity: Activity? = null
+    var iconBitmap:Bitmap? = null
+
 
     private var isBound = false
     private val iBinder = LocalBinder()
@@ -63,6 +60,9 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     private var mediaSessionConnector: MediaSessionConnector? = null
     private var mediaSession: MediaSession? = null
     private var playerNotificationManager: PlayerNotificationManager? = null
+
+    var notificationTitle = ""
+    var notificationSubTitle = ""
 
     val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -115,6 +115,34 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player?.playWhenReady = false
     }
 
+
+    fun reEmmitSatus() {
+        logger.info("reEmmtSatus ...")
+            playbackStatus = when (playbackStatus) {
+                PlaybackStatus.PAUSED -> {
+                    pushEvent(FLUTTER_RADIO_PLAYER_PAUSED)
+                    PlaybackStatus.PAUSED
+                }
+                PlaybackStatus.PLAYING -> {
+                    pushEvent(FLUTTER_RADIO_PLAYER_PLAYING)
+                    PlaybackStatus.PLAYING
+                }
+                PlaybackStatus.LOADING -> {
+                    pushEvent(FLUTTER_RADIO_PLAYER_LOADING)
+                    PlaybackStatus.LOADING
+
+                }
+                PlaybackStatus.STOPPED -> {
+                    pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
+                    PlaybackStatus.STOPPED
+                }
+                PlaybackStatus.ERROR ->    {
+                    pushEvent(FLUTTER_RADIO_PLAYER_ERROR)
+                    PlaybackStatus.ERROR
+                }
+            }
+    }
+
     fun isPlaying(): Boolean {
         val isPlaying = this.playbackStatus == PlaybackStatus.PLAYING
         logger?.info("is playing status: $isPlaying")
@@ -128,6 +156,12 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player?.stop()
         stopSelf()
         isBound = false
+    }
+
+    fun setTitle(title:String,subTitle:String) {
+        logger.info("settingTitle  $player ...")
+        this.notificationTitle = title
+        this.notificationSubTitle = subTitle
     }
 
     fun setVolume(volume: Double) {
@@ -155,14 +189,15 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         logger.info("LocalBroadCastManager Received...")
 
         // get details
-        val appName = intent!!.getStringExtra("appName")
-        val subTitle = intent.getStringExtra("subTitle")
+        notificationTitle = intent!!.getStringExtra("appName")
+        notificationSubTitle = intent.getStringExtra("subTitle")
         val streamUrl = intent.getStringExtra("streamUrl")
         val playWhenReady = intent.getStringExtra("playWhenReady") == "true"
 
-        player = SimpleExoPlayer.Builder(context).build()
-
-
+        player = SimpleExoPlayer.Builder(context).setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(10000,
+                10000,
+                10000,
+                5000).createDefaultLoadControl()).build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
@@ -185,7 +220,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
         }
 
-        dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
+        dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, notificationTitle))
 
         val audioSource = buildMediaSource(dataSourceFactory, streamUrl)
 
@@ -193,11 +228,18 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
             override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 playbackStatus = when (playbackState) {
+                    Player.STATE_ENDED -> {
+                        pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
+                        PlaybackStatus.STOPPED
+                    }
                     Player.STATE_BUFFERING -> {
                         pushEvent(FLUTTER_RADIO_PLAYER_LOADING)
                         PlaybackStatus.LOADING
-
                     }
+//                    Player.STATE_READY -> {
+//                        pushEvent(FLUTTER_RADIO_PLAYER_READY)
+//                        PlaybackStatus.READY
+//                    }
                     Player.STATE_IDLE -> {
                         pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
                         PlaybackStatus.STOPPED
@@ -238,16 +280,18 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             localBroadcastManager.sendBroadcast(broadcastMetaDataIntent.putExtra("meta_data", metaData))
         }
 
+
         val playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
                 context,
                 playbackChannelId,
                 R.string.channel_name,
                 R.string.channel_description,
                 playbackNotificationId,
+
                 object : PlayerNotificationManager.MediaDescriptionAdapter {
 
                     override fun getCurrentContentTitle(player: Player): String {
-                        return appName
+                        return notificationTitle
                     }
 
                     @Nullable
@@ -259,12 +303,12 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
                     @Nullable
                     override fun getCurrentContentText(player: Player): String? {
-                        return subTitle
+                        return null//notificationSubTitle
                     }
 
                     @Nullable
                     override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
-                        return null // OS will use the application icon.
+                        return this@StreamingCore.iconBitmap; // OS will use the application icon.
                     }
 
                 },
@@ -281,6 +325,14 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
                 }
         )
+//        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+//        val channel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            notificationManager.getNotificationChannel(playbackChannelId)
+//        } else {
+//            TODO("VERSION.SDK_INT < O")
+//        }
+//        channel.setShowBadge(false)
 
         logger.info("Building Media Session and Player Notification.")
 
@@ -290,13 +342,14 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         mediaSessionConnector = MediaSessionConnector(mediaSession)
         mediaSessionConnector?.setPlayer(player)
 
+
         playerNotificationManager.setUseStopAction(true)
         playerNotificationManager.setFastForwardIncrementMs(0)
         playerNotificationManager.setRewindIncrementMs(0)
         playerNotificationManager.setUsePlayPauseActions(true)
         playerNotificationManager.setUseNavigationActions(false)
+        playerNotificationManager.setDefaults(Notification.DEFAULT_ALL)
         playerNotificationManager.setUseNavigationActionsInCompactView(false)
-
         playerNotificationManager.setPlayer(player)
         playerNotificationManager.setMediaSessionToken(mediaSession.sessionToken)
 
@@ -306,6 +359,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
+
         return iBinder
     }
 

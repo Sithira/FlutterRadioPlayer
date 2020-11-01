@@ -6,8 +6,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--  Services for the plugin  -->
-    <application android:usesCleartextTraffic="true">
-        <service android:name=".core.StreamingCore"/>
+    <application android:usesCleartextTraffic="true"
+        android:supportsRtl="true">
+        <service android:name=".core.StreamingCore" android:stopWithTask="true"/>
     </application>
 </manifest>
 
