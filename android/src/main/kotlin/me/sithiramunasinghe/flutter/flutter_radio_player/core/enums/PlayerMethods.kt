@@ -6,6 +6,8 @@ enum class PlayerMethods(val value: String) {
 
     PLAY_PAUSE("playOrPause"),
     PLAY("play"),
+    NEW_PLAY("newPlay"),
+
     PAUSE("pause"),
     STOP("stop"),
     SET_TITLE("setTitle"),

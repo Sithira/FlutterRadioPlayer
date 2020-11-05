@@ -31,10 +31,14 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
                 let subTitle = args["subTitle"] as? String,
                 let playWhenReady = args["playWhenReady"] as? String
             {
+                if !streamingCore.isFirstTime{
+                    NotificationCenter.default.removeObserver(self, name:  Notifications.playbackNotification, object: nil)
+                }
+                NotificationCenter.default.addObserver(self, selector: #selector(onRecieve(_:)), name: Notifications.playbackNotification, object: nil)
+
                 streamingCore.initService(streamURL: streamURL, serviceName: appName, secondTitle: subTitle, playWhenReady: playWhenReady)
                 
-                NotificationCenter.default.addObserver(self, selector: #selector(onRecieve(_:)), name: Notifications.playbackNotification, object: nil)
-                result(nil)
+                result(false)
             }
             break
         case "playOrPause":
@@ -47,6 +51,15 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
         case "play":
             print("method called to play from service")
             let status = streamingCore.play()
+            if (status == PlayerStatus.PLAYING) {
+                result(true)
+            }
+            result(false)
+            break
+            
+        case "newPlay":
+            print("method called to newPlay from service")
+            let status = streamingCore.newPlay()
             if (status == PlayerStatus.PLAYING) {
                 result(true)
             }
@@ -103,6 +116,7 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
             result(nil)
         }
     }
+   
     
     @objc private func onRecieve(_ notification: Notification) {
         // unwrapping optional
@@ -115,7 +129,10 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
             print("Notification received with metada: \(metaDataEvent)")
             SwiftFlutterRadioPlayerPlugin.eventSinkMetadata?(metaDataEvent as! String)
         }
-        
+    }
+    
+    deinit {
+        print("DeinitPlugin")
     }
 }
 

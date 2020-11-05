@@ -37,6 +37,10 @@ class FlutterRadioPlayer {
     return await _channel.invokeMethod("play");
   }
 
+  Future<bool> newPlay() async {
+    return await _channel.invokeMethod("newPlay");
+  }
+
   Future<bool> pause() async {
     return await _channel.invokeMethod("pause");
   }

@@ -1,6 +1,8 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.*
 import android.content.res.AssetFileDescriptor
 import android.content.res.AssetManager
@@ -81,6 +83,11 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
             PlayerMethods.PLAY.value -> {
                 logger.info("play service invoked")
                 play()
+                result.success(null)
+            }
+            PlayerMethods.NEW_PLAY.value -> {
+                logger.info("newPlay service invoked")
+                newPlay()
                 result.success(null)
             }
             PlayerMethods.PAUSE.value -> {
@@ -236,9 +243,15 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         if (isPlaying()) pause() else play()
     }
 
+
     private fun play() {
-        logger.info("Attempting to play music....")
+        logger.info("Attempting to Play music....")
         coreService.play()
+    }
+
+    private fun newPlay() {
+        logger.info("Attempting to newPlay music....")
+        coreService.newPlay()
     }
 
     private fun pause() {
@@ -289,7 +302,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
             coreService = localBinder.service
             coreService.activity = this@FlutterRadioPlayerPlugin.activity
             isBound = true
-            coreService.reEmmitSatus()
+//            coreService.reEmmitSatus()
             logger.info("Service Connection Established...")
             logger.info("Service bounded...")
 
