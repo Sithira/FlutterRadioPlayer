@@ -23,17 +23,22 @@ class FlutterRadioPlayer {
   static Stream<String> _metaDataStream;
 
   Future<void> init(String appName, String subTitle, String streamURL,
-      String playWhenReady) async {
+      String playWhenReady,{ByteData coverImage}) async {
     return await _channel.invokeMethod("initService", {
       "appName": appName,
       "subTitle": subTitle,
       "streamURL": streamURL,
-      "playWhenReady": playWhenReady
+      "playWhenReady": playWhenReady,
+      "coverImage": coverImage.buffer.asUint8List()
     });
   }
 
   Future<bool> play() async {
     return await _channel.invokeMethod("play");
+  }
+
+  Future<bool> newPlay() async {
+    return await _channel.invokeMethod("newPlay");
   }
 
   Future<bool> pause() async {
@@ -58,10 +63,18 @@ class FlutterRadioPlayer {
     await _channel.invokeMethod("setVolume", {"volume": volume});
   }
 
-  Future<void> setUrl(String streamUrl, String playWhenReady) async {
+  Future<void> setTitle(String title, String subtitle) async {
+    await _channel.invokeMethod("setTitle", {
+      "title": title,
+      "subtitle": subtitle
+    });
+  }
+
+  Future<void> setUrl(String streamUrl, String playWhenReady, ByteData coverImage) async {
     await _channel.invokeMethod("setUrl", {
       "playWhenReady": playWhenReady,
-      "streamUrl": streamUrl
+      "streamUrl": streamUrl,
+      "coverImage": coverImage.buffer.asUint8List()
     });
   }
 

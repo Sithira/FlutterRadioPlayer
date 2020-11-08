@@ -16,28 +16,56 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
     private var playerItemContext = 0
     private var commandCenter: MPRemoteCommandCenter?
     private var playWhenReady: Bool = false
+    private var wasPlaying: Bool = false
+
+    private var streamUrl:String = ""
+    
+    var playerStatus: String = Constants.FLUTTER_RADIO_STOPPED
+
     
     override init() {
         print("StreamingCore Initializing...")
     }
     
+    deinit {
+        print("StreamingCore Deinitializing...")
+        
+        self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.status))
+        self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.status))
+        self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.isPlaybackBufferEmpty))
+    }
+    
+    fileprivate func removeAvPlayerObserversIfSubscribed() {
+        if !isFirstTime {
+            
+            NotificationCenter.default.removeObserver(self, name: .AVPlayerItemNewErrorLogEntry, object: nil)
+            NotificationCenter.default.removeObserver(self, name: .AVPlayerItemFailedToPlayToEndTime, object: nil)
+            NotificationCenter.default.removeObserver(self, name: .AVPlayerItemPlaybackStalled, object: nil)
+            
+            self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.status))
+            self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.status))
+            self.avPlayer?.removeObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.isPlaybackBufferEmpty))
+            
+        }
+    }
+    
     func initService(streamURL: String, serviceName: String, secondTitle: String, playWhenReady: String) -> Void {
-        
+        self.streamUrl = streamURL
         print("Initialing Service...")
-        
+
         print("Stream url: " + streamURL)
-        
+
         let streamURLInstance = URL(string: streamURL)
-        
+        removeAvPlayerObserversIfSubscribed()
         // Setting up AVPlayer
         avPlayerItem = AVPlayerItem(url: streamURLInstance!)
         avPlayer = AVPlayer(playerItem: avPlayerItem!)
-        
+
         //Listener for metadata from streaming
         let metadataOutput = AVPlayerItemMetadataOutput(identifiers: nil)
         metadataOutput.setDelegate(self, queue: DispatchQueue.main)
         avPlayerItem?.add(metadataOutput)
-        
+
         if playWhenReady == "true" {
             print("PlayWhenReady: true")
             self.playWhenReady = true
@@ -45,9 +73,85 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
 
         // initialize player observers
         initPlayerObservers()
-        
+
         // init Remote protocols.
         initRemoteTransportControl(appName: serviceName, subTitle: secondTitle);
+        setupNotifications()
+
+        if #available(iOS 10.0, *) {
+            avPlayerItem?.preferredForwardBufferDuration = 10
+        }
+
+        let notificationCenter = NotificationCenter.default
+        if !isFirstTime{
+            notificationCenter.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+        }
+        notificationCenter.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.didBecomeActiveNotification, object: nil)
+        
+        isFirstTime = false
+    }
+
+    @objc
+    func appMovedToForeground() {
+        print("Reemmiting the current state!")
+        pushEvent(eventName: playerStatus)
+    }
+    
+    var isFirstTime = true
+
+    func setupNotifications() {
+        // Get the default notification center instance.
+        let nc = NotificationCenter.default
+        if !isFirstTime{
+            nc.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+        }
+        nc.addObserver(self,
+                       selector: #selector(handleInterruption),
+                       name: AVAudioSession.interruptionNotification,
+                       object: nil)
+
+    }
+
+    @objc func handleInterruption(notification: Notification) {
+        // To be implemented.
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+           else {
+                  return
+          }
+      
+          switch type {
+          case .began:
+            if #available(iOS 10.3, *) {
+//                let suspendedKey = userInfo[AVAudioSessionInterruptionWasSuspendedKey] as? NSNumber ?? 0
+//                if suspendedKey == 0 {
+//                    wasPlaying = false
+//                    _ = pause()
+//                } else {
+                    if playerStatus == Constants.FLUTTER_RADIO_PLAYING{
+                        wasPlaying = true
+                        _ = pause()
+                    }
+//                }
+            } else {
+                wasPlaying = false
+                _ = pause()
+                // Fallback on earlier versions
+            }
+
+
+            print("an intrruption has begun")
+            break
+          case .ended:
+            if let optionValue = (notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? NSNumber)?.uintValue, AVAudioSession.InterruptionOptions(rawValue: optionValue) == .shouldResume {
+                    _ = play()
+                    wasPlaying = false
+            }
+          
+            break
+          default: ()
+          }
     }
     
     func metadataOutput(_ output: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from track: AVPlayerItemTrack?) {
@@ -55,23 +159,33 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
       {
           item.value(forKeyPath: "value")
           let song = (item.value(forKeyPath: "value")!)
-         pushEvent(typeEvent: "meta_data",eventName: song as! String)
+            pushEvent(typeEvent: "meta_data",eventName: song as! String)
 
             
         }}
     
     func play() -> PlayerStatus {
         print("invoking play method on service")
+        playerStatus = Constants.FLUTTER_RADIO_PLAYING
         if(!isPlaying()) {
             avPlayer?.play()
             pushEvent(eventName: Constants.FLUTTER_RADIO_PLAYING)
         }
-        
+        return PlayerStatus.PLAYING
+    }
+    
+    func newPlay() -> PlayerStatus {
+        print("invoking play method on service")
+        playerStatus = Constants.FLUTTER_RADIO_PLAYING
+        let streamURLInstance = URL(string: streamUrl)
+        playWhenReady = true
+        avPlayer?.replaceCurrentItem(with: AVPlayerItem(url: streamURLInstance!))
         return PlayerStatus.PLAYING
     }
     
     func pause() -> PlayerStatus {
         print("invoking pause method on service")
+        playerStatus = Constants.FLUTTER_RADIO_PAUSED
         if (isPlaying()) {
             avPlayer?.pause()
             pushEvent(eventName: Constants.FLUTTER_RADIO_PAUSED)
@@ -82,11 +196,14 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
     
     func stop() -> PlayerStatus {
         print("invoking stop method on service")
+        playerStatus = Constants.FLUTTER_RADIO_STOPPED
         if (isPlaying()) {
             pushEvent(eventName: Constants.FLUTTER_RADIO_STOPPED)
+          
             avPlayer = nil
             avPlayerItem = nil
             commandCenter = nil
+           
         }
         
         return PlayerStatus.STOPPED
@@ -103,17 +220,24 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
         print("Setting volume to: \(formattedVolume)")
         avPlayer?.volume = formattedVolume
     }
+
+     func setTitle(title: String, subTitle:String) -> Void {
+        print("Setting title to: \(title)")
+        let nowPlayingInfo = [MPMediaItemPropertyTitle : title, MPMediaItemPropertyArtist: subTitle]
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+     }
     
     func setUrl(streamURL: String, playWhenReady: String) -> Void {
+        self.streamUrl = streamURL
         let streamURLInstance = URL(string: streamURL)
         avPlayer?.replaceCurrentItem(with: AVPlayerItem(url: streamURLInstance!))
         
         if playWhenReady == "true" {
             self.playWhenReady = true
-            play()
+            _ = play()
         } else {
             self.playWhenReady = false
-            pause()
+            _ = pause()
         }
     }
     
@@ -155,9 +279,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
             }
             
             // control center play button callback
+//            commandCenter?.playCommand.remo
             commandCenter?.playCommand.addTarget { (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus in
                 print("command center play command...")
-                _ = self.play()
+                _ = self.newPlay()
                 return .success
             }
             
@@ -179,9 +304,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
             let audioSession = AVAudioSession.sharedInstance()
             
             if #available(iOS 10.0, *) {
-                try audioSession.setCategory(.playback, mode: .default, options: .defaultToSpeaker)
-                try audioSession.overrideOutputAudioPort(.speaker)
-                try audioSession.setActive(true)
+                
+                try? audioSession.setCategory(.playback, mode: .default)
+                try? audioSession.overrideOutputAudioPort(.speaker)
+                try? audioSession.setActive(true)
             }
             
             UIApplication.shared.beginReceivingRemoteControlEvents()
@@ -189,29 +315,58 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
             print("Something went wrong ! \(error)")
         }
     }
-    
+
     private func initPlayerObservers() {
         print("Initializing player observers...")
-        // Add observer for AVPlayer.Status and AVPlayerItem.currentItem
-        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.status), options: [.new, .initial], context: nil)
-        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.status), options:[.new, .initial], context: nil)
-        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.isPlaybackBufferEmpty), options:[.new, .initial], context: nil)
+        
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(itemNewErrorLogEntry(_:)), name: .AVPlayerItemNewErrorLogEntry, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(itemFailedToPlayToEndTime(_:)), name: .AVPlayerItemFailedToPlayToEndTime, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(itemPlaybackStalled(_:)), name: .AVPlayerItemPlaybackStalled, object: nil)
+        
+        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.status), options: [.new,.initial], context: nil)
+        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.status), options:[.new,.initial], context: nil)
+        self.avPlayer?.addObserver(self, forKeyPath: #keyPath(AVPlayer.currentItem.isPlaybackBufferEmpty), options:[.new,.initial], context: nil)
+    }
+    
+    
+    
+    @objc func itemNewErrorLogEntry(_ notification:Notification){
+        print(notification)
+    }
+    
+    @objc func itemFailedToPlayToEndTime(_ notification:Notification){
+        if let _ = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey]{
+            _ = stop()
+            print("Observer: Failed...\(notification.userInfo)")
+            playerStatus = Constants.FLUTTER_RADIO_ERROR
+
+            pushEvent(eventName: Constants.FLUTTER_RADIO_ERROR)
+        }
+    }
+    @objc func itemPlaybackStalled(_ notification:Notification){
+        _ = stop()
+        print("Observer: Stalled...")
+        playerStatus = Constants.FLUTTER_RADIO_ERROR
+
+        pushEvent(eventName: Constants.FLUTTER_RADIO_ERROR)
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         
         if object is AVPlayer {
+
             switch keyPath {
-                
             case #keyPath(AVPlayer.currentItem.isPlaybackBufferEmpty):
                 let _: Bool
                 if let newStatusNumber = change?[NSKeyValueChangeKey.newKey] as? Bool {
                     if newStatusNumber {
                         print("Observer: Stalling...")
+                        playerStatus = Constants.FLUTTER_RADIO_LOADING
+
                         pushEvent(eventName: Constants.FLUTTER_RADIO_LOADING)
                     }
                 }
-                
             case #keyPath(AVPlayer.currentItem.status):
                 let newStatus: AVPlayerItem.Status
                 if let newStatusAsNumber = change?[NSKeyValueChangeKey.newKey] as? NSNumber {
@@ -219,30 +374,48 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
                 } else {
                     newStatus = .unknown
                 }
-                
                 if newStatus == .readyToPlay {
                     print("Observer: Ready to play...")
                     if (!isPlaying()) {
                         if (self.playWhenReady) {
-                            play()
-                        }
-                        pushEvent(eventName: Constants.FLUTTER_RADIO_PAUSED)
+                           _ = play()
+                        }else{
+                            playerStatus = Constants.FLUTTER_RADIO_PAUSED
+                            pushEvent(eventName: Constants.FLUTTER_RADIO_PAUSED)}
                     } else {
+                        playerStatus = Constants.FLUTTER_RADIO_PLAYING
+
                         pushEvent(eventName: Constants.FLUTTER_RADIO_PLAYING)
                     }
                 }
                 
                 if newStatus == .failed {
                     print("Observer: Failed...")
+                    playerStatus = Constants.FLUTTER_RADIO_ERROR
+
                     pushEvent(eventName: Constants.FLUTTER_RADIO_ERROR)
                 }
             case #keyPath(AVPlayer.status):
-                print()
+                var newStatus: AVPlayerItem.Status
+                if let newStatusAsNumber = change?[NSKeyValueChangeKey.newKey] as? NSNumber {
+                    newStatus = AVPlayerItem.Status(rawValue: newStatusAsNumber.intValue)!
+                } else {
+                    newStatus = .unknown
+                }
+    
+                if newStatus == .failed {
+                    print("Observer: Failed...")
+                    
+                    playerStatus = Constants.FLUTTER_RADIO_ERROR
+
+                    pushEvent(eventName: Constants.FLUTTER_RADIO_ERROR)
+                }
             case .none:
                 print("none...")
             case .some(_):
                 print("some...")
             }
+//            print(keyPath)
         }
     }
     
