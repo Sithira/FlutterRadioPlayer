@@ -178,9 +178,11 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     }
 
     fun setTitle(title: String, subTitle: String) {
-        logger.info("settingTitle  $player ...")
+        logger.info("settingTitle $title,  $player ...")
         this.notificationTitle = title
         this.notificationSubTitle = subTitle
+        logger.info("calling  playerNotificationManager.invalidate()...")
+        playerNotificationManager?.invalidate()
     }
 
     fun setVolume(volume: Double) {
@@ -319,6 +321,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                 object : PlayerNotificationManager.MediaDescriptionAdapter {
 
                     override fun getCurrentContentTitle(player: Player): String {
+                        logger.info("updating title = $notificationTitle")
                         return notificationTitle
                     }
 
@@ -355,6 +358,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                     }
                 }
         )
+        this.playerNotificationManager = playerNotificationManager
         logger.info("Building Media Session and Player Notification.")
 
         val mediaSession = MediaSessionCompat(context, mediaSessionId)
@@ -378,6 +382,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         playerNotificationManager.setPlayer(player)
         playerNotificationManager.setMediaSessionToken(mediaSession.sessionToken)
 
+//        playerNotificationManager.
         playbackStatus = PlaybackStatus.PLAYING
 
         return START_STICKY
