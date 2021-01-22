@@ -1,15 +1,20 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player.core
 
+import android.app.Activity
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.audiofx.AudioEffect
 import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.Nullable
@@ -29,11 +34,13 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugi
 import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.broadcastChangedMetaDataName
 import me.sithiramunasinghe.flutter.flutter_radio_player.R
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlaybackStatus
+import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 
 class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
     private var logger = Logger.getLogger(StreamingCore::javaClass.name)
+    var activity: Activity? = null
 
     private var isBound = false
     private val iBinder = LocalBinder()
@@ -46,11 +53,35 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     private val broadcastIntent = Intent(broadcastActionName)
     private val broadcastMetaDataIntent = Intent(broadcastChangedMetaDataName)
 
+
     // class instances
+    private val handler = Handler();
+
+    private var audioManager: AudioManager? = null
+    private var focusRequest: AudioFocusRequest? = null
     private var player: SimpleExoPlayer? = null
     private var mediaSessionConnector: MediaSessionConnector? = null
     private var mediaSession: MediaSession? = null
     private var playerNotificationManager: PlayerNotificationManager? = null
+
+    val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                pause()
+                handler.postDelayed(delayedStopRunnable, TimeUnit.SECONDS.toMillis(30))
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                pause()
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                setVolume(0.1)
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                setVolume(1.0)
+                play()
+            }
+        }
+    }
 
     // session keys
     private val playbackNotificationId = 1025
@@ -69,6 +100,11 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
     fun play() {
         logger.info("playing audio $player ...")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioManager!!.requestAudioFocus(focusRequest!!)
+        } else {
+            audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
+        }
         player?.playWhenReady = true
     }
 
@@ -102,6 +138,10 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player?.playWhenReady = playWhenReady
     }
 
+    private var delayedStopRunnable = Runnable {
+//        stop()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         logger.info("Firing up service. (onStartCommand)...")
@@ -118,17 +158,41 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         player = SimpleExoPlayer.Builder(context).build()
 
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
+                setAudioAttributes(android.media.AudioAttributes.Builder().run {
+                    setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                    build()
+                })
+                setAcceptsDelayedFocusGain(true)
+                setOnAudioFocusChangeListener(this@StreamingCore, handler)
+                build()
+            }
+        }
+
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioManager!!.requestAudioFocus(focusRequest)
+        } else {
+            audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
+        }
+
         dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
 
         val audioSource = buildMediaSource(dataSourceFactory, streamUrl)
 
         val playerEvents = object : Player.EventListener {
-            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
 
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 playbackStatus = when (playbackState) {
                     Player.STATE_BUFFERING -> {
                         pushEvent(FLUTTER_RADIO_PLAYER_LOADING)
                         PlaybackStatus.LOADING
+
                     }
                     Player.STATE_IDLE -> {
                         pushEvent(FLUTTER_RADIO_PLAYER_STOPPED)
@@ -139,9 +203,16 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                     }
                     else -> setPlayWhenReady(playWhenReady)
                 }
-
+                if (playbackStatus == PlaybackStatus.PLAYING){
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        this@StreamingCore.audioManager!!.requestAudioFocus(this@StreamingCore.focusRequest!!)
+                    } else {
+                        this@StreamingCore.audioManager!!.requestAudioFocus(this@StreamingCore.afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
+                    }
+                }
                 logger.info("onPlayerStateChanged: $playbackStatus")
             }
+
 
             override fun onPlayerError(error: ExoPlaybackException) {
                 pushEvent(FLUTTER_RADIO_PLAYER_ERROR)
@@ -170,13 +241,16 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                 R.string.channel_description,
                 playbackNotificationId,
                 object : PlayerNotificationManager.MediaDescriptionAdapter {
+
                     override fun getCurrentContentTitle(player: Player): String {
                         return appName
                     }
 
                     @Nullable
                     override fun createCurrentContentIntent(player: Player): PendingIntent {
-                        return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+                        var intent = Intent(this@StreamingCore, activity!!.javaClass)
+                        var contentPendingIntent = PendingIntent.getActivity(this@StreamingCore, 0, intent, 0);
+                        return contentPendingIntent;
                     }
 
                     @Nullable
@@ -188,6 +262,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                     override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
                         return null // OS will use the application icon.
                     }
+
                 },
                 object : PlayerNotificationManager.NotificationListener {
                     override fun onNotificationCancelled(notificationId: Int, dismissedByUser: Boolean) {
@@ -199,6 +274,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                         logger.info("Attaching player as a foreground notification...")
                         startForeground(notificationId, notification)
                     }
+
                 }
         )
 
@@ -251,12 +327,12 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             }
 
             AudioManager.AUDIOFOCUS_LOSS -> {
-                stop()
+                pause()
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 if (isPlaying()) {
-                    stop()
+                    pause()
                 }
             }
 
@@ -273,7 +349,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
      */
     private fun pushEvent(eventName: String) {
         logger.info("Pushing Event: $eventName")
-        localBroadcastManager.sendBroadcast(broadcastIntent.putExtra("status", eventName))
+        localBroadcastManager.sendBroadcast(Intent(broadcastActionName).putExtra("status", eventName))
     }
 
     /**

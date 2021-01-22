@@ -1,10 +1,16 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
+import android.annotation.TargetApi
+import android.app.Activity
 import android.content.*
+import android.os.Build
 import android.os.IBinder
 import androidx.annotation.NonNull
+import androidx.collection.ArrayMap
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -17,11 +23,14 @@ import io.flutter.plugin.common.PluginRegistry.Registrar
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlayerItem
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.StreamingCore
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethods
+import java.lang.reflect.Field
 import java.util.logging.Logger
 
+
 /** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
+public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
+    public var activity: Activity? = null
 
     private lateinit var methodChannel: MethodChannel
 
@@ -29,6 +38,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     private var mEventMetaDataSink: EventSink? = null
 
     companion object {
+
         @JvmStatic
         fun registerWith(registrar: Registrar) {
             val instance = FlutterRadioPlayerPlugin()
@@ -47,6 +57,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         lateinit var coreService: StreamingCore
         lateinit var serviceIntent: Intent
     }
+
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         buildEngine(flutterPluginBinding.applicationContext, flutterPluginBinding.binaryMessenger)
@@ -117,7 +128,6 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         logger.info("Setting Application Context")
         applicationContext = context
         serviceIntent = Intent(applicationContext, StreamingCore::class.java)
-
 
         initEventChannelStatus(messenger)
         initEventChannelMetaData(messenger)
@@ -249,6 +259,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val localBinder = binder as StreamingCore.LocalBinder
             coreService = localBinder.service
+            coreService.activity = this@FlutterRadioPlayerPlugin.activity
             isBound = true
             logger.info("Service Connection Established...")
             logger.info("Service bounded...")
@@ -260,6 +271,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
      */
     private var broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+
             if (intent != null) {
                 val returnStatus = intent.getStringExtra("status")
                 logger.info("Received status: $returnStatus")
@@ -280,5 +292,18 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
                 mEventMetaDataSink?.success(receivedMeta)
             }
         }
+    }
+
+    override fun onDetachedFromActivity() {
+    }
+
+    override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {
+    }
+
+    override fun onAttachedToActivity(p0: ActivityPluginBinding) {
+        this.activity = p0.activity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
     }
 }
