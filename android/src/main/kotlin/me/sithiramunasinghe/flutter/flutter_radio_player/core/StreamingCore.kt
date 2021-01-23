@@ -62,6 +62,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
     private var player: SimpleExoPlayer? = null
     private var mediaSessionConnector: MediaSessionConnector? = null
     private var mediaSession: MediaSession? = null
+    private var currentMetadata: String = ""
     private var playerNotificationManager: PlayerNotificationManager? = null
 
     val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
@@ -152,7 +153,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         // get details
         val appName = intent!!.getStringExtra("appName")
-        val subTitle = intent.getStringExtra("subTitle")
+        currentMetadata = intent.getStringExtra("subTitle")
         val streamUrl = intent.getStringExtra("streamUrl")
         val playWhenReady = intent.getStringExtra("playWhenReady") == "true"
 
@@ -230,8 +231,8 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         // register our meta data listener
         player?.addMetadataOutput {
-            val metaData = it.get(0).toString()
-            localBroadcastManager.sendBroadcast(broadcastMetaDataIntent.putExtra("meta_data", metaData))
+            currentMetadata = it.get(0).toString()
+            localBroadcastManager.sendBroadcast(broadcastMetaDataIntent.putExtra("meta_data", currentMetadata))
         }
 
         val playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
@@ -255,7 +256,9 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
                     @Nullable
                     override fun getCurrentContentText(player: Player): String? {
-                        return subTitle
+                        val parsedMetadata = IcyMetadata(currentMetadata)
+                        logger.info("ICY Metadata parsed, reading title")
+                        return parsedMetadata.get("title")
                     }
 
                     @Nullable
