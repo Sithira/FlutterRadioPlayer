@@ -233,9 +233,10 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player?.addMetadataOutput {
             currentMetadata = it.get(0).toString()
             localBroadcastManager.sendBroadcast(broadcastMetaDataIntent.putExtra("meta_data", currentMetadata))
+            playerNotificationManager?.invalidate()
         }
 
-        val playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
+        playerNotificationManager = PlayerNotificationManager.createWithNotificationChannel(
                 context,
                 playbackChannelId,
                 R.string.channel_name,
@@ -289,15 +290,15 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         mediaSessionConnector = MediaSessionConnector(mediaSession)
         mediaSessionConnector?.setPlayer(player)
 
-        playerNotificationManager.setUseStopAction(true)
-        playerNotificationManager.setFastForwardIncrementMs(0)
-        playerNotificationManager.setRewindIncrementMs(0)
-        playerNotificationManager.setUsePlayPauseActions(true)
-        playerNotificationManager.setUseNavigationActions(false)
-        playerNotificationManager.setUseNavigationActionsInCompactView(false)
+        playerNotificationManager!!.setUseStopAction(true)
+        playerNotificationManager!!.setFastForwardIncrementMs(0)
+        playerNotificationManager!!.setRewindIncrementMs(0)
+        playerNotificationManager!!.setUsePlayPauseActions(true)
+        playerNotificationManager!!.setUseNavigationActions(false)
+        playerNotificationManager!!.setUseNavigationActionsInCompactView(false)
 
-        playerNotificationManager.setPlayer(player)
-        playerNotificationManager.setMediaSessionToken(mediaSession.sessionToken)
+        playerNotificationManager!!.setPlayer(player)
+        playerNotificationManager!!.setMediaSessionToken(mediaSession.sessionToken)
 
         playbackStatus = PlaybackStatus.PLAYING
 
