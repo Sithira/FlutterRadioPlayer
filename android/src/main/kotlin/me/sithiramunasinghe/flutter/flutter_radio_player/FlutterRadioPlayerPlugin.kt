@@ -1,12 +1,9 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
-import android.annotation.TargetApi
 import android.app.Activity
 import android.content.*
-import android.os.Build
 import android.os.IBinder
 import androidx.annotation.NonNull
-import androidx.collection.ArrayMap
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -23,7 +20,6 @@ import io.flutter.plugin.common.PluginRegistry.Registrar
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlayerItem
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.StreamingCore
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethods
-import java.lang.reflect.Field
 import java.util.logging.Logger
 
 
