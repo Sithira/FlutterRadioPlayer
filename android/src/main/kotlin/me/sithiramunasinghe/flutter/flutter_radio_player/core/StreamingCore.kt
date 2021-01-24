@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
@@ -156,6 +157,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         currentMetadata = intent.getStringExtra("subTitle")
         val streamUrl = intent.getStringExtra("streamUrl")
         val playWhenReady = intent.getStringExtra("playWhenReady") == "true"
+        val primaryColor = intent.getIntExtra("primaryColor", Color.TRANSPARENT)
 
         player = SimpleExoPlayer.Builder(context).build()
 
@@ -289,6 +291,11 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         mediaSessionConnector = MediaSessionConnector(mediaSession)
         mediaSessionConnector?.setPlayer(player)
+
+        if (primaryColor != Color.TRANSPARENT) {
+            playerNotificationManager!!.setColor(primaryColor)
+            playerNotificationManager!!.setColorized(true)
+        }
 
         playerNotificationManager!!.setUseStopAction(true)
         playerNotificationManager!!.setFastForwardIncrementMs(0)

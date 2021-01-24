@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
 class FlutterRadioPlayer {
@@ -23,12 +24,13 @@ class FlutterRadioPlayer {
   static Stream<String> _metaDataStream;
 
   Future<void> init(String appName, String subTitle, String streamURL,
-      String playWhenReady) async {
+      String playWhenReady, {Color primaryColor}) async {
     return await _channel.invokeMethod("initService", {
       "appName": appName,
       "subTitle": subTitle,
       "streamURL": streamURL,
-      "playWhenReady": playWhenReady
+      "playWhenReady": playWhenReady,
+      "primaryColor": primaryColor?.value
     });
   }
 

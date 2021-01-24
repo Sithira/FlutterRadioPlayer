@@ -178,8 +178,9 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         val appName = methodCall.argument<String>("appName")
         val subTitle = methodCall.argument<String>("subTitle")
         val playWhenReady = methodCall.argument<String>("playWhenReady")
+        val primaryColor = methodCall.argument<Long>("primaryColor")?.toInt()
 
-        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!)
+        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!, primaryColor)
     }
 
     /*===========================
@@ -244,6 +245,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         intent.putExtra("appName", playerItem.appName)
         intent.putExtra("subTitle", playerItem.subTitle)
         intent.putExtra("playWhenReady", playerItem.playWhenReady)
+        intent.putExtra("primaryColor", playerItem.primaryColor)
         return intent
     }
 
