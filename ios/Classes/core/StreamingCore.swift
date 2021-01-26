@@ -53,13 +53,13 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
     func metadataOutput(_ output: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from track: AVPlayerItemTrack?) {
       if let item = groups.first?.items.first // make this an AVMetadata item
       {
-          item.value(forKeyPath: "value")
-          let song = (item.value(forKeyPath: "value")!)
-         pushEvent(typeEvent: "meta_data",eventName: song as! String)
+        item.value(forKeyPath: "value")
+        let song: String = (item.value(forKeyPath: "value")!) as! String
+        pushEvent(typeEvent: "meta_data", eventName: song)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = song;
+      }
+    }
 
-            
-        }}
-    
     func play() -> PlayerStatus {
         print("invoking play method on service")
         if(!isPlaying()) {
@@ -126,10 +126,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
         
         do {
             commandCenter = MPRemoteCommandCenter.shared()
-            
-            // build now playing info
-            let nowPlayingInfo = [MPMediaItemPropertyTitle : appName, MPMediaItemPropertyArtist: subTitle]
-            
+
+            // build now playing
+            let nowPlayingInfo = [MPMediaItemPropertyArtist: appName, MPMediaItemPropertyTitle: subTitle]
+
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
             
             // basic command center options
