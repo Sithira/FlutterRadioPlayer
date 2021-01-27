@@ -242,6 +242,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
                 print("none...")
             case .some(_):
                 print("some...")
+            default:
+                if keyPath != nil {
+                    print("Observer: unhandled change for keyPath " + keyPath!)
+                }
             }
         }
     }
