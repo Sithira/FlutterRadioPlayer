@@ -222,13 +222,11 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
                 
                 if newStatus == .readyToPlay {
                     print("Observer: Ready to play...")
-                    if (!isPlaying()) {
-                        if (self.playWhenReady) {
-                            play()
-                        }
-                        pushEvent(eventName: Constants.FLUTTER_RADIO_PAUSED)
-                    } else {
-                        pushEvent(eventName: Constants.FLUTTER_RADIO_PLAYING)
+                    pushEvent(eventName: isPlaying()
+                                ? Constants.FLUTTER_RADIO_PLAYING
+                                : Constants.FLUTTER_RADIO_PAUSED)
+                    if !isPlaying() && self.playWhenReady {
+                        play()
                     }
                 }
                 
