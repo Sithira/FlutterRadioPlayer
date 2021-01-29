@@ -153,11 +153,17 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         logger.info("LocalBroadCastManager Received...")
 
         // get details
-        val appName = intent!!.getStringExtra("appName")
-        currentMetadata = intent.getStringExtra("subTitle")
-        val streamUrl = intent.getStringExtra("streamUrl")
-        val playWhenReady = intent.getStringExtra("playWhenReady") == "true"
-        val primaryColor = intent.getIntExtra("primaryColor", Color.TRANSPARENT)
+        val appName: String = intent?.getStringExtra("appName") ?: "Online-Radio"
+        currentMetadata = intent?.getStringExtra("subTitle") ?: "Live"
+        val streamUrl: String? = intent?.getStringExtra("streamUrl")
+        val playWhenReady: Boolean = intent?.getStringExtra("playWhenReady") ?: "false" == "true"
+        val primaryColor: Int = intent?.getIntExtra("primaryColor", Color.TRANSPARENT) ?: Color.TRANSPARENT
+
+        if (streamUrl == null) {
+            logger.warning("Streaming service invoked without Stream URL! Shutting service down")
+            stop()
+            return START_NOT_STICKY
+        }
 
         player = SimpleExoPlayer.Builder(context).build()
 
@@ -187,7 +193,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         // Build Media player
         dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
 
-        val audioSource = buildMediaSource(dataSourceFactory, streamUrl)
+        val audioSource: MediaSource = buildMediaSource(dataSourceFactory, streamUrl!!)
 
         val playerEvents = object : Player.EventListener {
 
@@ -315,7 +321,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
 
         playbackStatus = PlaybackStatus.PLAYING
 
-        return START_STICKY
+        return START_REDELIVER_INTENT
     }
 
     override fun onBind(intent: Intent?): IBinder? {
