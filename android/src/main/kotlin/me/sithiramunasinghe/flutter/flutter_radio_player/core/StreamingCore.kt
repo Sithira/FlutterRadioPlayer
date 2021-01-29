@@ -162,7 +162,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         player = SimpleExoPlayer.Builder(context).build()
 
 
-
+        // Gain Audio Focus
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
                 setAudioAttributes(android.media.AudioAttributes.Builder().run {
@@ -184,6 +184,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
             audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
         }
 
+        // Build Media player
         dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, appName))
 
         val audioSource = buildMediaSource(dataSourceFactory, streamUrl)
@@ -289,8 +290,13 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         val mediaSession = MediaSessionCompat(context, mediaSessionId)
         mediaSession.isActive = true
 
-        mediaSessionConnector = MediaSessionConnector(mediaSession)
-        mediaSessionConnector?.setPlayer(player)
+        try {
+            mediaSessionConnector = MediaSessionConnector(mediaSession)
+            mediaSessionConnector?.setPlayer(player)
+        } catch (error: NoSuchMethodError) {
+            // We've had this error: No static method getLooper()Landroid/os/Looper; in class Lcom/google/android/exoplayer2/util/Util; or its super classes (declaration of 'com.google.android.exoplayer2.util.Util' appears in
+            logger.warning("mediaSessionConnector cant be set; Exoplayer requires the plugin to be built with Java 8. See https://github.com/google/ExoPlayer/issues/6378 for more details")
+        }
 
         if (primaryColor != Color.TRANSPARENT) {
             playerNotificationManager!!.setColor(primaryColor)
