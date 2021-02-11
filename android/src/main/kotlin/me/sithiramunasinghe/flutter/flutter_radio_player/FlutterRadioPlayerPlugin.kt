@@ -4,10 +4,14 @@ import android.app.Activity
 import android.content.*
 import android.os.IBinder
 import androidx.annotation.NonNull
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.embedding.engine.plugins.lifecycle.FlutterLifecycleAdapter;
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -300,6 +304,14 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
 
     override fun onAttachedToActivity(p0: ActivityPluginBinding) {
         this.activity = p0.activity
+        val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(p0);
+        lifecycle.addObserver(object : LifecycleObserver {
+            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+            fun onDestroy() {
+                stop();
+                logger.info("Stopping foregroundservice since app is about to get destroyed")
+            }
+        })
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
