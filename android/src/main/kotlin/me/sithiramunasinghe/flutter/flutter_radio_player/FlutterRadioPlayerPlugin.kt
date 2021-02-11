@@ -3,8 +3,14 @@ package me.sithiramunasinghe.flutter.flutter_radio_player
 import android.content.*
 import android.os.IBinder
 import androidx.annotation.NonNull
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.embedding.engine.plugins.lifecycle.FlutterLifecycleAdapter;
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -20,7 +26,7 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethod
 import java.util.logging.Logger
 
 /** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
+public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
 
     private lateinit var methodChannel: MethodChannel
@@ -280,5 +286,16 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
                 mEventMetaDataSink?.success(receivedMeta)
             }
         }
+    }
+
+    override fun onAttachedToActivity(p0: ActivityPluginBinding) {
+        val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(p0);
+        lifecycle.addObserver(object : LifecycleObserver {
+            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+            fun onDestroy() {
+                stop();
+                logger.info("Stopping foregroundservice since app is about to get destroyed")
+            }
+        })
     }
 }
