@@ -296,12 +296,9 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         }
     }
 
-    override fun onDetachedFromActivity() {
-    }
-
-    override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {
-    }
-
+    /**
+     * Get android activity instance and listen for destroy event
+     */
     override fun onAttachedToActivity(p0: ActivityPluginBinding) {
         this.activity = p0.activity
         val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(p0);
@@ -314,6 +311,11 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
         })
     }
 
-    override fun onDetachedFromActivityForConfigChanges() {
-    }
+    /**
+     * These functions are unused but required by ActivityAware
+     * And we need ActivityAware for onAttachedToActivity function
+     */
+    override fun onDetachedFromActivity() {}
+    override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {}
+    override fun onDetachedFromActivityForConfigChanges() {}
 }
