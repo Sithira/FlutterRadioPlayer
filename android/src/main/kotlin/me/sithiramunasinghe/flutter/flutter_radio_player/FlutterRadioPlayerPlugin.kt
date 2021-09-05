@@ -211,13 +211,17 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
     }
 
     private fun play() {
-        logger.info("Attempting to play music....")
-        coreService.play()
+        if (isBound) {
+            logger.info("Attempting to play music....")
+            coreService.play()
+        }
     }
 
     private fun pause() {
         logger.info("Attempting to pause music....")
-        coreService.pause()
+        if (isBound) {
+            coreService.pause()
+        }
     }
 
     private fun stop() {
@@ -233,8 +237,10 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, Activi
     }
 
     private fun setVolume(volume: Double) {
-        logger.info("Attempting to change volume...")
-        coreService.setVolume(volume)
+        if (isBound) {
+            logger.info("Attempting to change volume...")
+            coreService.setVolume(volume)
+        }
     }
 
     /**
