@@ -42,3 +42,10 @@ Fixed bugs, reorganized code and improved documentation.
 * Fixed media meta-data on iOS
 
 
+# 1.1.0
+
+* Updated to NULL-SAFETY
+* Updated exo-player version
+* Bug fixes and improvments
+
+
