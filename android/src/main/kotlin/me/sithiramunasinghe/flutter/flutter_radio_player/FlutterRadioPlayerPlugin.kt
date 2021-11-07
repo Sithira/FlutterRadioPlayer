@@ -1,10 +1,17 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
+import android.app.Activity
 import android.content.*
 import android.os.IBinder
 import androidx.annotation.NonNull
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.embedding.engine.plugins.lifecycle.FlutterLifecycleAdapter;
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
@@ -19,9 +26,11 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.StreamingCore
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethods
 import java.util.logging.Logger
 
+
 /** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
+public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
+    public var activity: Activity? = null
 
     private lateinit var methodChannel: MethodChannel
 
@@ -29,6 +38,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     private var mEventMetaDataSink: EventSink? = null
 
     companion object {
+
         @JvmStatic
         fun registerWith(registrar: Registrar) {
             val instance = FlutterRadioPlayerPlugin()
@@ -47,6 +57,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         lateinit var coreService: StreamingCore
         lateinit var serviceIntent: Intent
     }
+
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         buildEngine(flutterPluginBinding.applicationContext, flutterPluginBinding.binaryMessenger)
@@ -118,7 +129,6 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         applicationContext = context
         serviceIntent = Intent(applicationContext, StreamingCore::class.java)
 
-
         initEventChannelStatus(messenger)
         initEventChannelMetaData(messenger)
 
@@ -168,8 +178,9 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         val appName = methodCall.argument<String>("appName")
         val subTitle = methodCall.argument<String>("subTitle")
         val playWhenReady = methodCall.argument<String>("playWhenReady")
+        val primaryColor = methodCall.argument<Long>("primaryColor")?.toInt()
 
-        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!)
+        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!, primaryColor)
     }
 
     /*===========================
@@ -200,13 +211,17 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun play() {
-        logger.info("Attempting to play music....")
-        coreService.play()
+        if (isBound) {
+            logger.info("Attempting to play music....")
+            coreService.play()
+        }
     }
 
     private fun pause() {
         logger.info("Attempting to pause music....")
-        coreService.pause()
+        if (isBound) {
+            coreService.pause()
+        }
     }
 
     private fun stop() {
@@ -222,8 +237,10 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun setVolume(volume: Double) {
-        logger.info("Attempting to change volume...")
-        coreService.setVolume(volume)
+        if (isBound) {
+            logger.info("Attempting to change volume...")
+            coreService.setVolume(volume)
+        }
     }
 
     /**
@@ -234,6 +251,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         intent.putExtra("appName", playerItem.appName)
         intent.putExtra("subTitle", playerItem.subTitle)
         intent.putExtra("playWhenReady", playerItem.playWhenReady)
+        intent.putExtra("primaryColor", playerItem.primaryColor)
         return intent
     }
 
@@ -249,6 +267,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val localBinder = binder as StreamingCore.LocalBinder
             coreService = localBinder.service
+            coreService.activity = this@FlutterRadioPlayerPlugin.activity
             isBound = true
             logger.info("Service Connection Established...")
             logger.info("Service bounded...")
@@ -260,6 +279,7 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
      */
     private var broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+
             if (intent != null) {
                 val returnStatus = intent.getStringExtra("status")
                 logger.info("Received status: $returnStatus")
@@ -281,4 +301,27 @@ public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
             }
         }
     }
+
+    /**
+     * Get android activity instance and listen for destroy event
+     */
+    override fun onAttachedToActivity(p0: ActivityPluginBinding) {
+        this.activity = p0.activity
+        val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(p0);
+        lifecycle.addObserver(object : LifecycleObserver {
+            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+            fun onDestroy() {
+                stop();
+                logger.info("Stopping foregroundservice since app is about to get destroyed")
+            }
+        })
+    }
+
+    /**
+     * These functions are unused but required by ActivityAware
+     * And we need ActivityAware for onAttachedToActivity function
+     */
+    override fun onDetachedFromActivity() {}
+    override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {}
+    override fun onDetachedFromActivityForConfigChanges() {}
 }

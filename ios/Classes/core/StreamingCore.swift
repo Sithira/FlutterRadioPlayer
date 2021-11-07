@@ -53,13 +53,13 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
     func metadataOutput(_ output: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from track: AVPlayerItemTrack?) {
       if let item = groups.first?.items.first // make this an AVMetadata item
       {
-          item.value(forKeyPath: "value")
-          let song = (item.value(forKeyPath: "value")!)
-         pushEvent(typeEvent: "meta_data",eventName: song as! String)
+        item.value(forKeyPath: "value")
+        let song: String = (item.value(forKeyPath: "value")!) as! String
+        pushEvent(typeEvent: "meta_data", eventName: song)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = song;
+      }
+    }
 
-            
-        }}
-    
     func play() -> PlayerStatus {
         print("invoking play method on service")
         if(!isPlaying()) {
@@ -126,10 +126,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
         
         do {
             commandCenter = MPRemoteCommandCenter.shared()
-            
-            // build now playing info
-            let nowPlayingInfo = [MPMediaItemPropertyTitle : appName, MPMediaItemPropertyArtist: subTitle]
-            
+
+            // build now playing
+            let nowPlayingInfo = [MPMediaItemPropertyArtist: appName, MPMediaItemPropertyTitle: subTitle]
+
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
             
             // basic command center options
@@ -222,13 +222,11 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
                 
                 if newStatus == .readyToPlay {
                     print("Observer: Ready to play...")
-                    if (!isPlaying()) {
-                        if (self.playWhenReady) {
-                            play()
-                        }
-                        pushEvent(eventName: Constants.FLUTTER_RADIO_PAUSED)
-                    } else {
-                        pushEvent(eventName: Constants.FLUTTER_RADIO_PLAYING)
+                    pushEvent(eventName: isPlaying()
+                                ? Constants.FLUTTER_RADIO_PLAYING
+                                : Constants.FLUTTER_RADIO_PAUSED)
+                    if !isPlaying() && self.playWhenReady {
+                        play()
                     }
                 }
                 
@@ -242,6 +240,10 @@ class StreamingCore : NSObject, AVPlayerItemMetadataOutputPushDelegate {
                 print("none...")
             case .some(_):
                 print("some...")
+            default:
+                if keyPath != nil {
+                    print("Observer: unhandled change for keyPath " + keyPath!)
+                }
             }
         }
     }
