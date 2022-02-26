@@ -185,7 +185,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioManager!!.requestAudioFocus(focusRequest)
+            audioManager!!.requestAudioFocus(focusRequest!!)
         } else {
             audioManager!!.requestAudioFocus(afChangeListener, AudioEffect.CONTENT_TYPE_MUSIC, 0);
         }
