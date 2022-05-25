@@ -1,96 +1,87 @@
+
 import 'dart:async';
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
 class FlutterRadioPlayer {
-  static const MethodChannel _channel =
-  const MethodChannel('flutter_radio_player');
-
+  static const MethodChannel _methodChannel =
+  MethodChannel('flutter_radio_player/method_channel');
   static const EventChannel _eventChannel =
-  const EventChannel("flutter_radio_player_stream");
+  EventChannel('flutter_radio_player/event_channel');
 
-  static const EventChannel _eventChannelMetaData =
-  const EventChannel("flutter_radio_player_meta_stream");
+  static Stream<String?>? _eventStream;
 
-  // constants to support event channel
-  static const flutter_radio_stopped = "flutter_radio_stopped";
-  static const flutter_radio_playing = "flutter_radio_playing";
-  static const flutter_radio_paused = "flutter_radio_paused";
-  static const flutter_radio_error = "flutter_radio_error";
-  static const flutter_radio_loading = "flutter_radio_loading";
+  FlutterRadioPlayer() {}
 
-  static Stream<String?>? _isPlayingStream;
-  static Stream<String?>? _metaDataStream;
+  static Future<String?> get platformVersion async {
+    final String? version =
+    await _methodChannel.invokeMethod('getPlatformVersion');
+    return version;
+  }
 
-  Future<void> init(String appName, String subTitle, String streamURL,
-      String playWhenReady, {Color? primaryColor}) async {
-    return await _channel.invokeMethod("initService", {
-      "appName": appName,
-      "subTitle": subTitle,
-      "streamURL": streamURL,
-      "playWhenReady": playWhenReady,
-      "primaryColor": primaryColor?.value
+  static addMedia() async {
+    await _methodChannel.invokeMethod("set_sources", {
+      "media_sources": [
+        {
+          "url": "http://pavo.prostreaming.net:8052/stream",
+          "title": "Z Fun Hundred",
+          "isPrimary": false,
+          "description": "TEST"
+        },
+        {
+          "url": "http://209.133.216.3:7018/;stream.mp3",
+          "title": "HiruFM",
+          "isPrimary": true,
+          "description": "HiruFM Live"
+        }
+      ]
     });
   }
 
-  Future<bool?> play() async {
-    return await _channel.invokeMethod("play");
+  static initPeriodicMetaData() async {
+    await _methodChannel.invokeMethod("init_periodic_metadata");
   }
 
-  Future<bool?> pause() async {
-    return await _channel.invokeMethod("pause");
-  }
-
-  Future<bool?> playOrPause() async {
-    print("Invoking platform method: playOrPause");
-    return await _channel.invokeMethod("playOrPause");
-  }
-
-  Future<bool?> stop() async {
-    return await _channel.invokeMethod("stop");
-  }
-
-  Future<bool?> isPlaying() async {
-    bool? isPlaying = await _channel.invokeMethod("isPlaying");
-    return isPlaying;
-  }
-
-  Future<void> setVolume(double volume) async {
-    await _channel.invokeMethod("setVolume", {"volume": volume});
-  }
-
-  Future<void> setUrl(String streamUrl, String playWhenReady) async {
-    await _channel.invokeMethod("setUrl", {
-      "playWhenReady": playWhenReady,
-      "streamUrl": streamUrl
+  static addMediaSources() async {
+    await _methodChannel.invokeMethod("add_sources", {
+      "media_sources": [
+        {"url": "1", "title": "some title", "primary": true},
+        {"url": "2", "title": "some title 2", "primary": false}
+      ]
     });
   }
 
-  /// Get the player stream.
-  Stream<String?>? get isPlayingStream {
-    if (_isPlayingStream == null) {
-      _isPlayingStream =
-          _eventChannel.receiveBroadcastStream().map<String?>((value) => value);
-    }
-    return _isPlayingStream;
+  void initPlayer() {
+     _eventStream ??= _eventChannel.receiveBroadcastStream().map<String?>((event) => event);
+    print("Initializing Event Channels");
   }
 
-  Stream<String?>? get metaDataStream {
-    if (_metaDataStream == null) {
-      _metaDataStream =
-          _eventChannelMetaData.receiveBroadcastStream().map<String?>((value) => value);
-    }
+  void play() async {
+    await _methodChannel.invokeMethod("play");
+  }
 
-    return _metaDataStream;
+  void pause() async {
+    await _methodChannel.invokeMethod("pause");
+  }
+
+  void stop() async {
+    await _methodChannel.invokeMethod("stop");
+  }
+
+  void playOrPause() async {
+    await _methodChannel.invokeMethod("play_or_pause");
+  }
+
+  void next() async {
+    await _methodChannel.invokeMethod("next_source");
+  }
+
+  void previous() async {
+    await _methodChannel.invokeMethod("previous_source");
+  }
+
+  Stream<String?>? get frpEventStream {
+    return _eventStream;
   }
 }
 
-/// Flutter_radio_playback status
-enum PlaybackStatus {
-  flutter_radio_stopped,
-  flutter_radio_playing,
-  flutter_radio_paused,
-  flutter_radio_error,
-  flutter_radio_loading,
-}

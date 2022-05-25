@@ -3,134 +3,108 @@ import UIKit
 
 public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
     
-    private var streamingCore: StreamingCore = StreamingCore()
-    
-    public static var mEventSink: FlutterEventSink?
-    public static var eventSinkMetadata: FlutterEventSink?
+    let frpCoreService: FRPCoreService = FRPCoreService.shared
+    static var eventSink: FlutterEventSink? = nil
     
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "flutter_radio_player", binaryMessenger: registrar.messenger())
+        let channel = FlutterMethodChannel(name: "flutter_radio_player/method_channel", binaryMessenger: registrar.messenger())
         let instance = SwiftFlutterRadioPlayerPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
         
-        // register the event channel
-        let eventChannel = FlutterEventChannel(name: "flutter_radio_player_stream", binaryMessenger: registrar.messenger())
-        eventChannel.setStreamHandler(StatusStreamHandler())
-        
-        let eventChannelMetadata = FlutterEventChannel(name: "flutter_radio_player_meta_stream", binaryMessenger: registrar.messenger())
-        eventChannelMetadata.setStreamHandler(MetaDataStreamHandler())
+        let eventChannel = FlutterEventChannel(name: "flutter_radio_player/event_channel", binaryMessenger: registrar.messenger())
+        eventChannel.setStreamHandler(FRPEventStreamHandler())
+        instance.frpCoreService.initCore()
+    
     }
+    
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        switch (call.method) {
-        case "initService":
-            print("method called to start the radio service")
-            if let args = call.arguments as? Dictionary<String, Any>,
-                let streamURL = args["streamURL"] as? String,
-                let appName = args["appName"] as? String,
-                let subTitle = args["subTitle"] as? String,
-                let playWhenReady = args["playWhenReady"] as? String
-            {
-                streamingCore.initService(streamURL: streamURL, serviceName: appName, secondTitle: subTitle, playWhenReady: playWhenReady)
-                
-                NotificationCenter.default.addObserver(self, selector: #selector(onRecieve(_:)), name: Notifications.playbackNotification, object: nil)
-                result(nil)
-            }
-            break
-        case "playOrPause":
-            print("method called to playOrPause from service")
-            if (streamingCore.isPlaying()) {
-                _ = streamingCore.pause()
-            } else {
-                _ = streamingCore.play()
-            }
-        case "play":
-            print("method called to play from service")
-            let status = streamingCore.play()
-            if (status == PlayerStatus.PLAYING) {
-                result(true)
-            }
-            result(false)
-            break
-        case "pause":
-            print("method called to play from service")
-            let status = streamingCore.pause()
-            if (status == PlayerStatus.IDLE) {
-                result(true)
-            }
-            result(false)
-            break
-        case "stop":
-            print("method called to stopped from service")
-            let status = streamingCore.stop()
-            if (status == PlayerStatus.STOPPED) {
-                result(true)
-            }
-            result(false)
-            break
-        case "isPlaying":
-            print("method called to is_playing from service")
-            result(streamingCore.isPlaying())
-            break
-        case "setVolume":
-            print("method called to setVolume from service")
-            if let args = call.arguments as? Dictionary<String, Any>,
-                let volume = args["volume"] as? NSNumber {
-                print("Received set to volume: \(volume)")
-                streamingCore.setVolume(volume: volume)
-            }
-            result(nil)
-        case "setUrl":
-            if let args = call.arguments as? Dictionary<String, Any>,
-                let streamURL = args["streamUrl"] as? String,
-                let playWhenReady = args["playWhenReady"] as? String
-            {
-                print("method called to setUrl")
-                streamingCore.setUrl(streamURL: streamURL, playWhenReady: playWhenReady)
-            }
-            result(nil)
-        default:
-            result(nil)
-        }
-    }
-    
-    @objc private func onRecieve(_ notification: Notification) {
-        // unwrapping optional
-        if let playerEvent = notification.userInfo!["status"] {
-            print("Notification received with event name: \(playerEvent)")
-            SwiftFlutterRadioPlayerPlugin.mEventSink?(playerEvent)
+        if (call.method == "getPlatformVersion") {
+            result("iOS " + UIDevice.current.systemVersion)
+            return
         }
         
-        if let metaDataEvent = notification.userInfo!["meta_data"] {
-            print("Notification received with metada: \(metaDataEvent)")
-            SwiftFlutterRadioPlayerPlugin.eventSinkMetadata?(metaDataEvent as! String)
+        if call.method == "play" {
+            self.frpCoreService.play()
+            result("success")
+            return
         }
         
-    }
-}
-
-
-
-class StatusStreamHandler: NSObject, FlutterStreamHandler {
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        SwiftFlutterRadioPlayerPlugin.mEventSink = events
-        return nil;
-    }
-    
-    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        SwiftFlutterRadioPlayerPlugin.mEventSink = nil
-        return nil;
-    }
-}
-
-class MetaDataStreamHandler: NSObject, FlutterStreamHandler {
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        SwiftFlutterRadioPlayerPlugin.eventSinkMetadata = events
-        return nil;
-    }
-    
-    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        SwiftFlutterRadioPlayerPlugin.eventSinkMetadata = nil
-        return nil;
+        if call.method == "pause" {
+            self.frpCoreService.pause()
+            result("success")
+        }
+        
+        if call.method == "stop" {
+            self.frpCoreService.stop()
+            result("success")
+            return
+        }
+        
+        if call.method == "next_source" {
+            do {
+                try self.frpCoreService.player.next()
+            } catch let error {
+                print("Error \(error) from call: \(call.method)")
+            }
+            return
+        }
+        
+        if call.method == "previous_source" {
+            do {
+                try self.frpCoreService.player.previous()
+            } catch let error {
+                print("Error \(error) from call: \(call.method)")
+            }
+            return
+        }
+        
+        if (call.method == "play_or_pause") {
+            self.frpCoreService.playOrPause()
+            result("success")
+            return
+        }
+        
+        if call.method == "init_services" {
+            // for plugin stub!
+            print("Calling \(call.method)")
+            result("success")
+            return
+        }
+        
+        if call.method == "get_playback_state" {
+            result(self.frpCoreService.playbackStatus)
+            return
+        }
+        
+        if call.method == "init_periodic_metadata" {
+            if  let args = call.arguments as? Dictionary<String, Any> {
+                _ = args["milliseconds"] as? Int ?? 3000
+            }
+            self.frpCoreService.useICYData(status: true)
+            result("success")
+            return
+        }
+        
+        if call.method == "get_current_metadata" {
+            result(frpCoreService.currentMetaData?.value as? String ?? "N/A")
+            return
+        }
+ 
+        if call.method == "set_sources" {
+            if let args = call.arguments as? Dictionary<String, Any> {
+                let mediaSourceMap = args["media_sources"] as? Array<Dictionary<String, Any>>
+                let sourceList = mediaSourceMap?.map({ x in
+                    FRPMediaSource.init(map: x)
+                })
+                 do {
+                    try self.frpCoreService.setMediaSources(sources: sourceList!, playDefault: true)
+                 } catch let error {
+                     print(error)
+                 }
+            }
+            result("success")
+            return
+        }
     }
 }

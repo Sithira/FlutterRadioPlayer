@@ -1,40 +1,57 @@
-import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:flutter_radio_player/frp_controls.dart';
+import 'package:flutter_radio_player/frp_source_list.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatefulWidget {
-  final playerState = FlutterRadioPlayer.flutter_radio_paused;
+  const MyApp({Key? key}) : super(key: key);
 
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  int _currentIndex = 0;
-  double volume = 0.8;
-  FlutterRadioPlayer _flutterRadioPlayer = new FlutterRadioPlayer();
+  String _platformVersion = 'Unknown';
+  String latestPlaybackStatus = "flutter_radio_stopped";
+  String currentPlaying = "N/A";
+  final FlutterRadioPlayer _flutterRadioPlayer = FlutterRadioPlayer();
 
   @override
   void initState() {
     super.initState();
-    initRadioService();
+    initPlatformState();
+    _flutterRadioPlayer.initPlayer();
   }
 
-  Future<void> initRadioService() async {
+  // Platform messages are asynchronous, so we initialize in an async method.
+  Future<void> initPlatformState() async {
+    String platformVersion;
+    // Platform messages may fail, so we use a try/catch PlatformException.
+    // We also handle the message potentially returning null.
     try {
-      await _flutterRadioPlayer.init(
-        "Flutter Radio Example",
-        "Live",
-        "http://209.133.216.3:7018/stream?type=http&nocache=1906",
-        "false",
-      );
+      platformVersion = await FlutterRadioPlayer.platformVersion ??
+          'Unknown platform version';
     } on PlatformException {
-      print("Exception occurred while trying to register the services.");
+      platformVersion = 'Failed to get platform version.';
     }
+
+    // If the widget was removed from the tree while the asynchronous platform
+    // message was in flight, we want to discard the reply rather than calling
+    // setState to update our non-existent appearance.
+    if (!mounted) return;
+
+    setState(() {
+      _platformVersion = platformVersion;
+    });
   }
 
   @override
@@ -42,122 +59,26 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Flutter Radio Player Example'),
+          title: const Text('Flutter Radio Player'),
         ),
         body: Center(
           child: Column(
-            children: <Widget>[
-              StreamBuilder(
-                stream: _flutterRadioPlayer.isPlayingStream,
-                initialData: widget.playerState,
-                builder:
-                    (BuildContext context, AsyncSnapshot<String> snapshot) {
-                  String returnData = snapshot.data;
-                  print("object data: " + returnData);
-                  switch (returnData) {
-                    case FlutterRadioPlayer.flutter_radio_stopped:
-                      return ElevatedButton(
-                        style: ElevatedButton.styleFrom(),
-                        child: Text("Start listening now"),
-                        onPressed: () async {
-                          await initRadioService();
-                        },
-                      );
-                      break;
-                    case FlutterRadioPlayer.flutter_radio_loading:
-                      return Text("Loading stream...");
-                    case FlutterRadioPlayer.flutter_radio_error:
-                      return ElevatedButton(
-                        style: ElevatedButton.styleFrom(),
-                        child: Text("Retry ?"),
-                        onPressed: () async {
-                          await initRadioService();
-                        },
-                      );
-                      break;
-                    default:
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          IconButton(
-                            onPressed: () async {
-                              print("button press data: " +
-                                  snapshot.data.toString());
-                              await _flutterRadioPlayer.playOrPause();
-                            },
-                            icon: snapshot.data ==
-                                    FlutterRadioPlayer.flutter_radio_playing
-                                ? Icon(Icons.pause)
-                                : Icon(Icons.play_arrow),
-                          ),
-                          IconButton(
-                            onPressed: () async {
-                              await _flutterRadioPlayer.stop();
-                            },
-                            icon: Icon(Icons.stop),
-                          )
-                        ],
-                      );
-                      break;
-                  }
-                },
-              ),
-              Slider(
-                value: volume,
-                min: 0,
-                max: 1.0,
-                onChanged: (value) => setState(
-                  () {
-                    volume = value;
-                    _flutterRadioPlayer.setVolume(volume);
-                  },
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text('Running on: $_platformVersion\n'),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                ),
+                child: FRPPlayerControls(
+                  flutterRadioPlayer: _flutterRadioPlayer,
                 ),
               ),
-              Text(
-                "Volume: " + (volume * 100).toStringAsFixed(0),
+              FRPSourceList(
+                flutterRadioPlayer: _flutterRadioPlayer,
               ),
-              SizedBox(
-                height: 15,
-              ),
-              Text("Metadata Track "),
-              StreamBuilder<String>(
-                initialData: "",
-                stream: _flutterRadioPlayer.metaDataStream,
-                builder: (context, snapshot) {
-                  return Text(snapshot.data);
-                },
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(),
-                child: Text("Change URL"),
-                onPressed: () async {
-                  _flutterRadioPlayer.setUrl(
-                    "http://209.133.216.3:7018/;stream.mp3",
-                    "false",
-                  );
-                },
-              )
             ],
           ),
-        ),
-        bottomNavigationBar: new BottomNavigationBar(
-          currentIndex: this._currentIndex,
-          onTap: (int index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          items: [
-            BottomNavigationBarItem(
-              icon: new Icon(Icons.home),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: new Icon(Icons.pages),
-              label: "Second Page",
-            )
-          ],
         ),
       ),
     );

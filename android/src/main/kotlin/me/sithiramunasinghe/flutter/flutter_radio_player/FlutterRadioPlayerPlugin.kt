@@ -1,327 +1,272 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
 import android.app.Activity
-import android.content.*
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.annotation.NonNull
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.gson.Gson
+import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.embedding.engine.plugins.lifecycle.FlutterLifecycleAdapter;
-import io.flutter.plugin.common.BinaryMessenger
-import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.EventChannel.EventSink
-import io.flutter.plugin.common.EventChannel.StreamHandler
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.PluginRegistry.Registrar
-import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlayerItem
-import me.sithiramunasinghe.flutter.flutter_radio_player.core.StreamingCore
-import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.PlayerMethods
-import java.util.logging.Logger
+import io.flutter.plugin.common.*
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRP_STOPPED
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPAudioSource
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.events.FRPPlayerEvent
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.exceptions.FRPException
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.services.FRPCoreService
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
 
-
-/** FlutterRadioPlayerPlugin */
-public class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
-    private var logger = Logger.getLogger(FlutterRadioPlayerPlugin::javaClass.name)
-    public var activity: Activity? = null
-
-    private lateinit var methodChannel: MethodChannel
-
-    private var mEventSink: EventSink? = null
-    private var mEventMetaDataSink: EventSink? = null
+class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler {
 
     companion object {
-
-        @JvmStatic
-        fun registerWith(registrar: Registrar) {
-            val instance = FlutterRadioPlayerPlugin()
-            instance.buildEngine(registrar.activeContext()!!, registrar.messenger()!!)
-        }
-
-        const val broadcastActionName = "playback_status"
-        const val broadcastChangedMetaDataName = "changed_meta_data"
-        const val methodChannelName = "flutter_radio_player"
-        const val eventChannelName = methodChannelName + "_stream"
-        const val eventChannelMetaDataName = methodChannelName + "_meta_stream"
-
-
-        var isBound = false
-        lateinit var applicationContext: Context
-        lateinit var coreService: StreamingCore
-        lateinit var serviceIntent: Intent
+        private const val TAG = "FlutterRadioPlayerPlugin"
+        private const val METHOD_CHANNEL_NAME = "flutter_radio_player/method_channel"
+        private const val EVENT_CHANNEL_NAME = "flutter_radio_player/event_channel"
+        private val GSON = Gson()
     }
 
+    var serviceIntent: Intent? = null
+
+    private var isBound: Boolean = false
+    private var context: Context? = null
+    private var pluginActivity: Activity? = null
+    private var frpChannel: MethodChannel? = null
+    private var serviceConnection: ServiceConnection? = null
+
+    private var eventSink: EventChannel.EventSink? = null
+    private var flutterPluginBinding: FlutterPlugin.FlutterPluginBinding? = null
+
+    private lateinit var frpRadioPlayerService: FRPCoreService
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        buildEngine(flutterPluginBinding.applicationContext, flutterPluginBinding.binaryMessenger)
-    }
-
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        logger.info("Calling to method: " + call.method)
-        when (call.method) {
-            PlayerMethods.IS_PLAYING.value -> {
-                val playStatus = isPlaying()
-                logger.info("is playing service invoked with result: $playStatus")
-                result.success(playStatus)
-            }
-            PlayerMethods.PLAY_PAUSE.value -> {
-                playOrPause()
-                result.success(null)
-            }
-            PlayerMethods.PLAY.value -> {
-                logger.info("play service invoked")
-                play()
-                result.success(null)
-            }
-            PlayerMethods.PAUSE.value -> {
-                logger.info("pause service invoked")
-                pause()
-                result.success(null)
-            }
-            PlayerMethods.STOP.value -> {
-                logger.info("stop service invoked")
-                stop()
-                result.success(null)
-            }
-            PlayerMethods.INIT.value -> {
-                logger.info("start service invoked")
-                init(call)
-                result.success(null)
-            }
-            PlayerMethods.SET_VOLUME.value -> {
-                val volume = call.argument<Double>("volume")!!
-                logger.info("Changing volume to: $volume")
-                setVolume(volume)
-                result.success(null)
-            }
-            PlayerMethods.SET_URL.value -> {
-                logger.info("Set url invoked")
-                val url = call.argument<String>("streamUrl")!!
-                val playWhenReady = call.argument<String>("playWhenReady")!!
-                setUrl(url, playWhenReady)
-            }
-            else -> result.notImplemented()
-        }
-
+        this.flutterPluginBinding = flutterPluginBinding
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        methodChannel.setMethodCallHandler(null)
-        LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiver)
-        LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(broadcastReceiverMetaDetails)
+        Log.i(TAG, "::: Detaching FRP from FlutterEngine :::")
+        this.context = null
+        frpChannel?.setMethodCallHandler(null)
+        frpChannel = null
+        eventSink = null
+        serviceIntent = null
     }
 
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+//        val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(binding)
+        Log.i(TAG, ":::: onAttachedToActivity ::::: ")
+        EventBus.getDefault().register(this)
+        pluginActivity = binding.activity
+        startFRPService()
+    }
 
-    private fun buildEngine(context: Context, messenger: BinaryMessenger) {
-
-        logger.info("Building Streaming Audio Core...")
-        methodChannel = MethodChannel(messenger, methodChannelName)
-        methodChannel.setMethodCallHandler(this)
-
-        logger.info("Setting Application Context")
-        applicationContext = context
-        serviceIntent = Intent(applicationContext, StreamingCore::class.java)
-
-        initEventChannelStatus(messenger)
-        initEventChannelMetaData(messenger)
-
-
-        logger.info("Setting up broadcast receiver with event sink")
-        LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiver, IntentFilter(broadcastActionName))
-        LocalBroadcastManager.getInstance(context).registerReceiver(broadcastReceiverMetaDetails, IntentFilter(broadcastChangedMetaDataName))
-
-        logger.info("Streaming Audio Player Engine Build Complete...")
+    override fun onDetachedFromActivityForConfigChanges() {
 
     }
 
-    private fun initEventChannelStatus(messenger: BinaryMessenger) {
-        logger.info("Setting up event channel to receive events")
-        val eventChannel = EventChannel(messenger, eventChannelName)
-        eventChannel.setStreamHandler(object : StreamHandler {
-            override fun onListen(arguments: Any?, events: EventSink?) {
-                mEventSink = events
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+    }
+
+    override fun onDetachedFromActivity() {
+        if (isBound) {
+            frpRadioPlayerService.onDestroy()
+        }
+        EventBus.getDefault().unregister(this)
+    }
+
+    private fun onAttachedToEngine(context: Context, binaryMessenger: BinaryMessenger) {
+        Log.i(TAG, "::: Attaching to FRP to FlutterEngine :::")
+        this.context = context
+        frpChannel = MethodChannel(binaryMessenger, METHOD_CHANNEL_NAME)
+        frpChannel?.setMethodCallHandler(this)
+
+        val eventChannel = EventChannel(binaryMessenger, EVENT_CHANNEL_NAME)
+        eventChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                Log.i(TAG, "EventChannel sink ok")
+                eventSink = events
             }
 
             override fun onCancel(arguments: Any?) {
-                mEventSink = null
+                Log.i(TAG, "EventChannel sink null")
             }
         })
-    }
 
-    private fun initEventChannelMetaData(messenger: BinaryMessenger) {
-        logger.info("Setting up event channel to receive metadata")
-        val eventChannel = EventChannel(messenger, eventChannelMetaDataName)
-        eventChannel.setStreamHandler(object : StreamHandler {
-            override fun onListen(arguments: Any?, events: EventSink?) {
-                mEventMetaDataSink = events
+        // service intent
+        serviceIntent = Intent(context, FRPCoreService::class.java)
+
+        // start the background service.
+        pluginActivity?.startService(serviceIntent)
+
+        // bind and get the service connection
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                Log.i(TAG, "Service Connected...")
+                val localBinder = service as FRPCoreService.LocalBinder
+                frpRadioPlayerService = localBinder.service
+                frpRadioPlayerService.currentActivity =
+                    this@FlutterRadioPlayerPlugin.pluginActivity!!
+                isBound = true
             }
 
-            override fun onCancel(arguments: Any?) {
-                mEventMetaDataSink = null
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Log.i(TAG, "Service disconnected...")
+                isBound = false
             }
-        })
+        }
+
+        context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
     }
 
-
-    private fun buildPlayerDetailsMeta(methodCall: MethodCall): PlayerItem {
-
-        logger.info("Mapping method call to player item object")
-
-        val url = methodCall.argument<String>("streamURL")
-        val appName = methodCall.argument<String>("appName")
-        val subTitle = methodCall.argument<String>("subTitle")
-        val playWhenReady = methodCall.argument<String>("playWhenReady")
-        val primaryColor = methodCall.argument<Long>("primaryColor")?.toInt()
-
-        return PlayerItem(appName!!, subTitle!!, url!!, playWhenReady!!, primaryColor)
+    @Subscribe
+    fun handleFRPEvents(event: FRPPlayerEvent) {
+        if (eventSink != null) {
+            Log.d(TAG, "FRP Event data = $event")
+            if (event.playbackStatus != null) {
+                if (event.playbackStatus == FRP_STOPPED) {
+                    Log.i(TAG, "Service unbind....")
+                    isBound = false
+                    context!!.unbindService(serviceConnection!!)
+                }
+            }
+            eventSink?.success(GSON.toJson(event))
+        } else {
+            Log.i(TAG, "EventSink null")
+        }
     }
 
-    /*===========================
-     *     Player methods
-     *===========================
-     */
-
-    private fun init(methodCall: MethodCall) {
-        logger.info("Attempting to initialize service...")
+    private fun startFRPService() {
         if (!isBound) {
-            logger.info("Service not bound, binding now....")
-            serviceIntent = setIntentData(serviceIntent, buildPlayerDetailsMeta(methodCall))
-            applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_IMPORTANT)
-            applicationContext.startService(serviceIntent)
+            onAttachedToEngine(
+                this.flutterPluginBinding!!.applicationContext,
+                this.flutterPluginBinding!!.binaryMessenger
+            )
         }
     }
 
-    private fun isPlaying(): Boolean {
-        logger.info("Attempting to get playing status....")
-        val playingStatus = coreService.isPlaying()
-        logger.info("Payback-status: $playingStatus")
-        return playingStatus
-    }
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "getPlatformVersion" -> {
+                result.success("Android ${android.os.Build.VERSION.RELEASE}")
+            }
+            "init_service" -> {
+                if (isBound) {
+                    result.error("FRP_001", "Failed to call init_service", null)
+                    throw FRPException("FRPCoreService already been initialized")
+                }
+                startFRPService()
+                result.success("success")
+            }
+            "init_periodic_metadata" -> {
+                if (!isBound) {
+                    result.error("FRP_002", "Failed to call init_periodic_metadata", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                val period: Float = call.argument<Float>("milliseconds") ?: 30000F
+                frpRadioPlayerService.initPeriodicMetaData(period)
+                result.success("success")
+            }
+            "play" -> {
+                if (!isBound) {
+                    result.error("FRP_003", "Failed to call play", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.play()
+                result.success("success")
+            }
+            "pause" -> {
+                if (!isBound) {
+                    result.error("FRP_004", "Failed to call pause", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.pause()
+                result.success("success")
+            }
+            "play_or_pause" -> {
+                if (!isBound) {
+                    result.error("FRP_005", "Failed to call play_or_pause", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.playOrPause()
+                result.success("success")
+            }
+            "next_source" -> {
+                if (!isBound) {
+                    result.error("FRP_006", "Failed to call next_source", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.nextMediaItem()
+                result.success("success")
+            }
+            "previous_source" -> {
+                if (!isBound) {
+                    result.error("FRP_007", "Failed to call prev_source", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.prevMediaItem()
+                result.success("success")
+            }
+            "set_volume" -> {
+                if (!isBound) {
+                    result.error("FRP_008", "Failed to call set_volume", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                val volume: Float = call.argument<Float>("volume") ?: 0.5F
+                frpRadioPlayerService.setVolume(volume)
+                result.success("success")
+            }
+            "set_sources" -> {
+                if (!isBound) {
+                    result.error("FRP_009", "Failed to call set_sources", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
 
-    private fun playOrPause() {
-        logger.info("Attempting to either play or pause...")
-        if (isPlaying()) pause() else play()
-    }
+                if (!call.hasArgument("media_sources")) {
+                    result.error("FRP_010", "Failed to call set_sources", null)
+                    throw FRPException("Invalid input")
+                }
 
-    private fun play() {
-        if (isBound) {
-            logger.info("Attempting to play music....")
-            coreService.play()
-        }
-    }
+                val mediaSources = call.argument<ArrayList<HashMap<String, Any>>>("media_sources")
 
-    private fun pause() {
-        logger.info("Attempting to pause music....")
-        if (isBound) {
-            coreService.pause()
-        }
-    }
+                if (mediaSources.isNullOrEmpty()) {
+                    result.error("FRP_011", "Failed to call set_sources", null)
+                    throw FRPException("Empty media sources")
+                }
 
-    private fun stop() {
-        logger.info("Attempting to stop music and unbind services....")
-        isBound = false
-        applicationContext.unbindService(serviceConnection)
-        coreService.stop()
-    }
+                val mappedSources = mediaSources.map { m -> FRPAudioSource.fromMap(m) }
 
-    private fun setUrl(streamUrl: String, playWhenReady: String) {
-        val playStatus: Boolean = playWhenReady == "true"
-        coreService.setUrl(streamUrl, playStatus)
-    }
+                frpRadioPlayerService.setMediaSources(mappedSources, true)
+                result.success("success")
+            }
+            "get_playback_state" -> {
+                if (!isBound) {
+                    result.error("FRP_012", "Failed to call set_sources", null)
 
-    private fun setVolume(volume: Double) {
-        if (isBound) {
-            logger.info("Attempting to change volume...")
-            coreService.setVolume(volume)
-        }
-    }
-
-    /**
-     * Build the player meta information for Stream service
-     */
-    private fun setIntentData(intent: Intent, playerItem: PlayerItem): Intent {
-        intent.putExtra("streamUrl", playerItem.streamUrl)
-        intent.putExtra("appName", playerItem.appName)
-        intent.putExtra("subTitle", playerItem.subTitle)
-        intent.putExtra("playWhenReady", playerItem.playWhenReady)
-        intent.putExtra("primaryColor", playerItem.primaryColor)
-        return intent
-    }
-
-    /**
-     * Initializes the connection
-     */
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceDisconnected(name: ComponentName?) {
-            isBound = false
-            // coreService = null
-        }
-
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            val localBinder = binder as StreamingCore.LocalBinder
-            coreService = localBinder.service
-            coreService.activity = this@FlutterRadioPlayerPlugin.activity
-            isBound = true
-            logger.info("Service Connection Established...")
-            logger.info("Service bounded...")
-        }
-    }
-
-    /**
-     * Broadcast receiver for the playback callbacks
-     */
-    private var broadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-
-            if (intent != null) {
-                val returnStatus = intent.getStringExtra("status")
-                logger.info("Received status: $returnStatus")
-                mEventSink?.success(returnStatus)
-
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                result.success(frpRadioPlayerService.getPlayerState())
+            }
+            "get_current_metadata" -> {
+                if (!isBound) {
+                    result.error("FRP_013", "Failed to call get_current_metadata", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                result.success(GSON.toJson(frpRadioPlayerService.getMetaData()))
+            }
+            "get_is_playing" -> {
+                if (!isBound) {
+                    result.error("FRP_014", "Failed to call get_is_playing", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                result.success(frpRadioPlayerService.isPlaying())
+            }
+            else -> {
+                result.notImplemented()
             }
         }
     }
-
-    /**
-     * Broadcast receiver for changed track and metadata
-     */
-    private var broadcastReceiverMetaDetails = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent != null) {
-                val receivedMeta = intent.getStringExtra("meta_data")
-                logger.info("Received meta: $receivedMeta")
-                mEventMetaDataSink?.success(receivedMeta)
-            }
-        }
-    }
-
-    /**
-     * Get android activity instance and listen for destroy event
-     */
-    override fun onAttachedToActivity(p0: ActivityPluginBinding) {
-        this.activity = p0.activity
-        val lifecycle: Lifecycle = FlutterLifecycleAdapter.getActivityLifecycle(p0);
-        lifecycle.addObserver(object : LifecycleObserver {
-            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-            fun onDestroy() {
-                stop();
-                logger.info("Stopping foregroundservice since app is about to get destroyed")
-            }
-        })
-    }
-
-    /**
-     * These functions are unused but required by ActivityAware
-     * And we need ActivityAware for onAttachedToActivity function
-     */
-    override fun onDetachedFromActivity() {}
-    override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {}
-    override fun onDetachedFromActivityForConfigChanges() {}
 }
