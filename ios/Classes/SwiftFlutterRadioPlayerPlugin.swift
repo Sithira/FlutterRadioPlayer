@@ -3,7 +3,7 @@ import UIKit
 
 public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
     
-    let frpCoreService: FRPCoreService = FRPCoreService.shared
+let frpCoreService: FRPCoreService = FRPCoreService.shared
     static var eventSink: FlutterEventSink? = nil
     
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -57,6 +57,18 @@ public class SwiftFlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
                 print("Error \(error) from call: \(call.method)")
             }
             return
+        }
+        
+        if call.method == "seek_source_to_index" {
+            if  let args = call.arguments as? Dictionary<String, Any> {
+                let sourceIndex = args["source_index"] as? Int ?? 0
+                let playIfReady = args["play_when_ready"] as? Bool ?? false
+                do {
+                    try self.frpCoreService.player.jumpToItem(atIndex: sourceIndex, playWhenReady: playIfReady)
+                } catch let err {
+                    print("JumpTo: \(err)")
+                }
+            }
         }
         
         if (call.method == "play_or_pause") {
