@@ -247,6 +247,13 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer?.seekToPreviousMediaItem()
     }
 
+    fun seekToMediaItem(index: Int, playIfReady: Boolean) {
+        exoPlayer?.seekToDefaultPosition(index)
+        exoPlayer?.apply {
+            playWhenReady = playIfReady
+        }
+    }
+
     fun setVolume(volume: Float) {
         if (volume < 0) {
             throw FRPException("Volumes needs to be more than 0")

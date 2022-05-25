@@ -210,9 +210,19 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                 frpRadioPlayerService.prevMediaItem()
                 result.success("success")
             }
+            "seek_source_to_index" -> {
+                if (!isBound) {
+                    result.error("FRP_008", "Failed to call prev_source", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                val sourceIndex: Int = call.argument<Int>("source_index") ?: 0
+                val playIfReady: Boolean = call.argument<Boolean>("play_when_ready") ?: false
+                frpRadioPlayerService.seekToMediaItem(sourceIndex, playIfReady)
+                result.success("success")
+            }
             "set_volume" -> {
                 if (!isBound) {
-                    result.error("FRP_008", "Failed to call set_volume", null)
+                    result.error("FRP_009", "Failed to call set_volume", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 val volume: Float = call.argument<Float>("volume") ?: 0.5F
@@ -221,19 +231,19 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "set_sources" -> {
                 if (!isBound) {
-                    result.error("FRP_009", "Failed to call set_sources", null)
+                    result.error("FRP_010", "Failed to call set_sources", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
 
                 if (!call.hasArgument("media_sources")) {
-                    result.error("FRP_010", "Failed to call set_sources", null)
+                    result.error("FRP_011", "Failed to call set_sources", null)
                     throw FRPException("Invalid input")
                 }
 
                 val mediaSources = call.argument<ArrayList<HashMap<String, Any>>>("media_sources")
 
                 if (mediaSources.isNullOrEmpty()) {
-                    result.error("FRP_011", "Failed to call set_sources", null)
+                    result.error("FRP_012", "Failed to call set_sources", null)
                     throw FRPException("Empty media sources")
                 }
 
@@ -244,7 +254,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "get_playback_state" -> {
                 if (!isBound) {
-                    result.error("FRP_012", "Failed to call set_sources", null)
+                    result.error("FRP_013", "Failed to call set_sources", null)
 
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
@@ -252,14 +262,14 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "get_current_metadata" -> {
                 if (!isBound) {
-                    result.error("FRP_013", "Failed to call get_current_metadata", null)
+                    result.error("FRP_014", "Failed to call get_current_metadata", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 result.success(GSON.toJson(frpRadioPlayerService.getMetaData()))
             }
             "get_is_playing" -> {
                 if (!isBound) {
-                    result.error("FRP_014", "Failed to call get_is_playing", null)
+                    result.error("FRP_015", "Failed to call get_is_playing", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 result.success(frpRadioPlayerService.isPlaying())
