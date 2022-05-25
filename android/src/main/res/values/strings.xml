@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_name">flutter_radio_player</string>
+    <string name="channel_description">flutter_radio_player_channel_desc</string>
+</resources>

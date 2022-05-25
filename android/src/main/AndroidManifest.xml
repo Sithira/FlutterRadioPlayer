@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="me.sithiramunasinghe.flutter.flutter_radio_player">
+
+    <!--  Permissions for the plugin  -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--  Services for the plugin  -->
+    <application android:usesCleartextTraffic="true" tools:targetApi="m">
+        <service android:name=".core.services.FRPCoreService"/>
+    </application>
+</manifest>
