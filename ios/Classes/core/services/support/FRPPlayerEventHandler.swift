@@ -13,13 +13,7 @@ class FRPPlayerEventHandler: NSObject {
     
     override init() {
         print("::::: EVENT HANDLER INIT ::::")
-//        FRPCoreService.shared.player.eve
     }
-    
-    static func handleAudioLevelChange(volume: Float) {
-        print("Changed :::::::::: ")
-    }
-    
     
     static func handleMetaDataChanges(metaDetails: Array<AVMetadataItem>) {
         if (FRPCoreService.shared.useIcyData) {
@@ -28,9 +22,10 @@ class FRPPlayerEventHandler: NSObject {
                 .forEach({ meta in
                     print("Meta details \(meta)")
                     FRPCoreService.shared.currentMetaData = meta
-                    let nowPlayingTitle = meta.value as! String
-                    FRPCoreService.shared.player.nowPlayingInfoController.set(keyValue: MediaItemProperty.albumTitle(nowPlayingTitle))
-                    FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(icyMetaDetails: nowPlayingTitle))
+                    if let nowPlayingTitle = meta.value {
+                        FRPCoreService.shared.player.nowPlayingInfoController.set(keyValue: MediaItemProperty.albumTitle(nowPlayingTitle as? String))
+                        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(icyMetaDetails: nowPlayingTitle as? String))
+                    }
             })
         }
     }

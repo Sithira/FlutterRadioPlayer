@@ -19,10 +19,6 @@ let frpCoreService: FRPCoreService = FRPCoreService.shared
     
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        if (call.method == "getPlatformVersion") {
-            result("iOS " + UIDevice.current.systemVersion)
-            return
-        }
         
         if call.method == "play" {
             self.frpCoreService.play()
@@ -42,20 +38,14 @@ let frpCoreService: FRPCoreService = FRPCoreService.shared
         }
         
         if call.method == "next_source" {
-            do {
-                try self.frpCoreService.player.next()
-            } catch let error {
-                print("Error \(error) from call: \(call.method)")
-            }
+            self.frpCoreService.next()
+            result("success")
             return
         }
         
         if call.method == "previous_source" {
-            do {
-                try self.frpCoreService.player.previous()
-            } catch let error {
-                print("Error \(error) from call: \(call.method)")
-            }
+            self.frpCoreService.previous()
+            result("success")
             return
         }
         
@@ -85,14 +75,11 @@ let frpCoreService: FRPCoreService = FRPCoreService.shared
         }
         
         if call.method == "get_playback_state" {
-            result(self.frpCoreService.playbackStatus)
+            result(self.frpCoreService.playbackStatus.rawValue)
             return
         }
         
-        if call.method == "init_periodic_metadata" {
-            if  let args = call.arguments as? Dictionary<String, Any> {
-                _ = args["milliseconds"] as? Int ?? 3000
-            }
+        if call.method == "use_icy_data" {
             self.frpCoreService.useICYData(status: true)
             result("success")
             return
@@ -101,6 +88,19 @@ let frpCoreService: FRPCoreService = FRPCoreService.shared
         if call.method == "get_current_metadata" {
             result(frpCoreService.currentMetaData?.value as? String ?? "N/A")
             return
+        }
+        
+        if call.method == "set_volume" {
+            if let args = call.arguments as? Dictionary<String, Any> {
+                let volume = args["volume"] as? Float ?? 0.5
+                let adjustedVolume = self.frpCoreService.setVolume(volume: volume)
+                result(adjustedVolume)
+            }
+            result("success")
+        }
+        
+        if call.method == "get_is_playing" {
+            result(self.frpCoreService.isPlaying())
         }
  
         if call.method == "set_sources" {

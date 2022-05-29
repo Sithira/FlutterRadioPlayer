@@ -11,7 +11,7 @@ class FRPEventStreamHandler: NSObject, FlutterStreamHandler {
     
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         SwiftFlutterRadioPlayerPlugin.eventSink = events
-        print("onListen \(events)")
+        print("onListen \(String(describing: events))")
         return nil
     }
 

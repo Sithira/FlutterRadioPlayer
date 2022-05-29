@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum FRPPlaybackStatus {
+enum FRPPlaybackStatus: String {
     case LOADING
     case STOPPED
     case PLAYING
