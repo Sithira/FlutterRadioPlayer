@@ -150,9 +150,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            "getPlatformVersion" -> {
-                result.success("Android ${android.os.Build.VERSION.RELEASE}")
-            }
             "init_service" -> {
                 if (isBound) {
                     result.error("FRP_001", "Failed to call init_service", null)
@@ -161,13 +158,12 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                 startFRPService()
                 result.success("success")
             }
-            "init_periodic_metadata" -> {
+            "use_icy_data" -> {
                 if (!isBound) {
                     result.error("FRP_002", "Failed to call init_periodic_metadata", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
-                val period: Float = call.argument<Float>("milliseconds") ?: 30000F
-                frpRadioPlayerService.initPeriodicMetaData(period)
+                frpRadioPlayerService.useIcyData(status = true)
                 result.success("success")
             }
             "play" -> {
@@ -184,6 +180,14 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 frpRadioPlayerService.pause()
+                result.success("success")
+            }
+            "stop" -> {
+                if (!isBound) {
+                    result.error("FRP_004", "Failed to call pause", null)
+                    throw FRPException("FRPCoreService has not been initialized yet")
+                }
+                frpRadioPlayerService.stop()
                 result.success("success")
             }
             "play_or_pause" -> {
@@ -225,13 +229,14 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                     result.error("FRP_009", "Failed to call set_volume", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
-                val volume: Float = call.argument<Float>("volume") ?: 0.5F
-                frpRadioPlayerService.setVolume(volume)
+                val volume: Double = call.argument<Double>("volume") ?: 0.5
+                frpRadioPlayerService.setVolume(volume.toFloat())
                 result.success("success")
             }
             "set_sources" -> {
                 if (!isBound) {
                     result.error("FRP_010", "Failed to call set_sources", null)
+                    startFRPService()
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
 
@@ -258,7 +263,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
 
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
-                result.success(frpRadioPlayerService.getPlayerState())
+                result.success(frpRadioPlayerService.getPlayerState().name)
             }
             "get_current_metadata" -> {
                 if (!isBound) {

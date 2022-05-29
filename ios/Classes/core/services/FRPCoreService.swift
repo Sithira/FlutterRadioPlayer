@@ -9,6 +9,7 @@ import Foundation
 import SwiftAudioEx
 import AVFAudio
 import AVFoundation
+import MediaPlayer
 
 class FRPCoreService: NSObject {
     
@@ -40,9 +41,13 @@ class FRPCoreService: NSObject {
             .previous
         ]
         
+        // custom commands
+        player.remoteCommandController.handleNextTrackCommand = { (event) in self.handleNextTrackCommandDefault(event: event) }
+        player.remoteCommandController.handlePreviousTrackCommand = { (event) in self.handlePreviousTrackCommandDefault(event: event) }
+        
+        // add listeners
         player.event.stateChange.addListener(self, FRPPlayerEventHandler.handleAudioPlayerStateChange)
         player.event.receiveMetadata.addListener(self, FRPPlayerEventHandler.handleMetaDataChanges)
-
         
         audioSession.addObserver(self, forKeyPath: #keyPath(AVAudioSession.outputVolume), options: [.new, .initial], context: nil)
     }
@@ -109,6 +114,7 @@ class FRPCoreService: NSObject {
     
     func setVolume(volume: Float) -> Float {
         player.volume = volume
+        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(data: FRPConsts.FRP_VOLUME_CHANGED))
         return volume
     }
     
@@ -117,7 +123,6 @@ class FRPCoreService: NSObject {
             metaDetails
                 .compactMap({ $0 as AVMetadataItem })
                 .forEach({ meta in
-                    print("Meta details \(meta)")
                     currentMetaData = meta
                     let nowPlayingTitle = meta.value as! String
                     player.nowPlayingInfoController.set(keyValue: MediaItemProperty.albumTitle(nowPlayingTitle))
@@ -127,20 +132,58 @@ class FRPCoreService: NSObject {
         }
     }
     
+    func next() {
+        do {
+            try player.next()
+            currentPlayingItem = updateCurrentPlayingItem(current: player.currentItem!)
+            FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(currentSource: getCurrentSource()))
+        } catch let err {
+            print("Play next item failed: \(err)")
+        }
+    }
+    
+    func previous() {
+        do {
+            try player.previous()
+            currentPlayingItem = updateCurrentPlayingItem(current: player.currentItem!)
+            FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(currentSource: getCurrentSource()))
+        } catch let err {
+            print("Play previous item failed: \(err)")
+        }
+    }
+    
     func useICYData(status: Bool = false) {
         useIcyData = status
     }
+    
+    private func getCurrentSource() -> FRPCurrentSource {
+        return FRPCurrentSource(title: (currentPlayingItem?.title)! , description: (currentPlayingItem?.albumTitle)! )
+    }
+    
+    private func updateCurrentPlayingItem(current: AudioItem) -> DefaultAudioItem {
+        return DefaultAudioItem(audioUrl: current.getSourceUrl(), title: current.getTitle(), albumTitle: current.getAlbumTitle(), sourceType: current.getSourceType())
+    }
+    
+    private func handleNextTrackCommandDefault(event: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+        next()
+        return MPRemoteCommandHandlerStatus.success
+    }
 
+    private func handlePreviousTrackCommandDefault(event: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+        previous()
+        return MPRemoteCommandHandlerStatus.success
+    }
+    
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if (object is AVAudioSession) {
             switch (keyPath) {
             case #keyPath(AVAudioSession.outputVolume):
                 if let newStatus = change?[NSKeyValueChangeKey.newKey] as? Float {
                     if newStatus == 0 {
-                        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(data: FRPConsts.FRP_VOLUME_MUTE))
+                        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(type: FRPConsts.FRP_VOLUME_MUTE))
                         print("Volume muted...")
                     } else {
-                        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(data: FRPConsts.FRP_VOLUME_CHANGED))
+                        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(volumeChangeEvent: FRPVolumeChangeEvent(volume: newStatus), type: FRPConsts.FRP_VOLUME_CHANGED))
                         print("Volume toggle: \(newStatus)")
                     }
                 }

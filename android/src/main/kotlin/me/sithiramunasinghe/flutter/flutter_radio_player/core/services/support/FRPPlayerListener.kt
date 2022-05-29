@@ -25,17 +25,23 @@ class FRPPlayerListener(
 
     override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
         if (muted) {
-            eventBus.post(FRPPlayerEvent(data = FRP_VOLUME_MUTE))
+            eventBus.post(FRPPlayerEvent(type = FRP_VOLUME_MUTE))
         } else {
-            eventBus.post(FRPPlayerEvent(data = FRP_VOLUME_CHANGED))
+            eventBus.post(FRPPlayerEvent(type = FRP_VOLUME_CHANGED, volumeChangeEvent = FRPVolumeChangeEvent(volume = volume.toFloat())))
         }
     }
 
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
         Log.i(TAG, ":::: meta details changed ::::")
-        frpCoreService.currentMetaData = mediaMetadata
-        eventBus.post(FRPPlayerEvent(FRPIcyMetaData = FRPIcyMetaData(frpCoreService.currentMetaData)))
-        playerNotificationManager?.invalidate()
+        if (frpCoreService.useICYData) {
+            frpCoreService.currentMetaData = mediaMetadata
+            if (!mediaMetadata.title.isNullOrEmpty()) {
+                eventBus.post(FRPPlayerEvent(icyMetaDetails = mediaMetadata.title.toString()))
+                playerNotificationManager?.invalidate()
+            }
+        } else {
+            Log.i(TAG, "ICY details are not enabled (optional). Refer documentation")
+        }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {

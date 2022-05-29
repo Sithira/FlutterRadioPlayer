@@ -2,14 +2,23 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
-
-import 'events/frp_player_events.dart';
+import 'package:flutter_radio_player/models/frp_player_event.dart';
 
 class FRPPlayerControls extends StatefulWidget {
   final FlutterRadioPlayer flutterRadioPlayer;
+  final Function addSourceFunction;
+  final Function nextSource;
+  final Function prevSource;
+  final Function(String status) updateCurrentStatus;
 
-  const FRPPlayerControls({Key? key, required this.flutterRadioPlayer})
-      : super(key: key);
+  const FRPPlayerControls({
+    Key? key,
+    required this.flutterRadioPlayer,
+    required this.addSourceFunction,
+    required this.nextSource,
+    required this.prevSource,
+    required this.updateCurrentStatus,
+  }) : super(key: key);
 
   @override
   State<FRPPlayerControls> createState() => _FRPPlayerControlsState();
@@ -18,6 +27,7 @@ class FRPPlayerControls extends StatefulWidget {
 class _FRPPlayerControlsState extends State<FRPPlayerControls> {
   String latestPlaybackStatus = "flutter_radio_stopped";
   String currentPlaying = "N/A";
+  double volume = 0.5;
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +37,11 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
         if (snapshot.hasData) {
           FRPPlayerEvents frpEvent =
               FRPPlayerEvents.fromJson(jsonDecode(snapshot.data as String));
+          print(
+              "FRP EVENT FLUTTER = ${frpEvent.playbackStatus} | ${frpEvent.icyMetaDetails} | ${frpEvent.data}");
           if (frpEvent.playbackStatus != null) {
             latestPlaybackStatus = frpEvent.playbackStatus!;
+            widget.updateCurrentStatus(latestPlaybackStatus);
           }
           if (frpEvent.icyMetaDetails != null) {
             currentPlaying = frpEvent.icyMetaDetails!;
@@ -51,8 +64,7 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
           return latestPlaybackStatus == "flutter_radio_stopped"
               ? ElevatedButton(
                   onPressed: () async {
-                    await FlutterRadioPlayer.addMedia();
-                    await FlutterRadioPlayer.initPeriodicMetaData();
+                    widget.addSourceFunction();
                   },
                   child: const Text("Add sources"),
                 )
@@ -104,6 +116,15 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
                             ),
                           ],
                         ),
+                        Slider(
+                          value: volume,
+                          onChanged: (value) {
+                            setState(() {
+                              volume = value;
+                              widget.flutterRadioPlayer.setVolume(volume);
+                            });
+                          },
+                        )
                       ],
                     ),
                   ),
@@ -111,8 +132,7 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
         } else if (latestPlaybackStatus == "flutter_radio_stopped") {
           return ElevatedButton(
             onPressed: () async {
-              await FlutterRadioPlayer.addMedia();
-              await FlutterRadioPlayer.initPeriodicMetaData();
+              widget.addSourceFunction();
             },
             child: const Text("Add sources"),
           );

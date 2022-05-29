@@ -7,19 +7,22 @@ import android.content.Intent
 import android.net.Uri
 import android.os.*
 import android.support.v4.media.session.MediaSessionCompat
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.MediaMetadata
+import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.source.DefaultMediaSourceFactory
+import com.google.android.exoplayer2.source.MediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import com.google.android.exoplayer2.util.EventLogger
+import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
 import io.flutter.Log
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPAudioSource
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPCurrentSource
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPIcyMetaData
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPVolumeChangeEvent
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.enums.FRPPlaybackStatus
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.events.FRPPlayerEvent
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.exceptions.FRPException
@@ -35,7 +38,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         private const val TAG = "FRPCoreService"
     }
 
-    private var runnableMetaData: Runnable? = null
     var currentActivity: Activity? = null
     val context: Context = this
 
@@ -50,6 +52,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     var currentMetaData: MediaMetadata? = null
     var mediaSourceList: List<FRPAudioSource> = emptyList()
     var useICYData: Boolean = false
+    var currentPlayingItem: FRPCurrentSource? = null
 
     var handler: Handler = Handler(Looper.getMainLooper())
 
@@ -69,15 +72,16 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         // build exoplayer
         exoPlayer = exoPlayerBuilder
             .setLooper(handler.looper)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultHttpDataSource.Factory().apply {
-                setUserAgent(Util.getUserAgent(context, "flutter-radio-player"))
-                setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
-            }))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
                     .setContentType(C.CONTENT_TYPE_MUSIC)
                     .build(), true
+            )
+            .setLivePlaybackSpeedControl(
+                DefaultLivePlaybackSpeedControl.Builder()
+                    .setFallbackMaxPlaybackSpeed(1.04f)
+                    .build()
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
@@ -87,6 +91,8 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             it.addListener(FRPPlayerListener(this, exoPlayer, playerNotificationManager, eventBus))
             it.playWhenReady = false
         }
+
+        exoPlayer?.addAnalyticsListener(EventLogger(null));
 
         Log.i(TAG, "::::: END FlutterRadioPlayerService::onCreate ::::")
     }
@@ -105,11 +111,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
         mediaSessionConnector?.setPlayer(null)
         playerNotificationManager?.setPlayer(null)
-
-        if (runnableMetaData != null) {
-            handler.removeCallbacksAndMessages(null)
-            runnableMetaData = null
-        }
 
         super.onDestroy()
     }
@@ -170,31 +171,58 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             throw FRPException("Empty media sources")
         }
 
-        this.mediaSourceList = sourceList
-        var tempMediaSources = this.mediaSourceList
+        this.mediaSourceList = sourceList.sortedByDescending { it.isPrimary }
 
-        if (tempMediaSources.none { frpAudioSource -> frpAudioSource.isPrimary }) {
+        if (this.mediaSourceList.none { frpAudioSource -> frpAudioSource.isPrimary }) {
             throw FRPException("No default source provided")
         }
 
         Log.i(TAG, "Current PlaybackStatus $playbackStatus")
 
-        val defaultSource = tempMediaSources.firstOrNull { frp -> frp.isPrimary }
+        val defaultSource = this.mediaSourceList.firstOrNull { frp -> frp.isPrimary }
 
         if (playbackStatus == FRPPlaybackStatus.PAUSED || playbackStatus == FRPPlaybackStatus.STOPPED) {
 
             if (defaultSource != null) {
                 Log.i(TAG, "Default media item added to exoplayer...")
-                exoPlayer?.addMediaItem(0, MediaItem.fromUri(Uri.parse(defaultSource.url)))
-                tempMediaSources = tempMediaSources.dropWhile { frp ->
-                    frp.url.equals(defaultSource.url)
+
+                val mediaUrl = Uri.parse(defaultSource.url)
+
+                val mediaBuilder =
+                    MediaItem.Builder().setUri(mediaUrl).setLiveConfiguration(
+                        MediaItem.LiveConfiguration.Builder()
+                            .setMaxPlaybackSpeed(1.02f)
+                            .build()
+                    )
+
+                if (defaultSource.isAcc!!) {
+                    mediaBuilder.setMimeType(MimeTypes.AUDIO_AAC)
+                    Log.d(TAG, "is an AAC media source")
                 }
+
+                exoPlayer?.addMediaSource(0, buildMediaSource(mediaUrl, mediaBuilder.build()))
+                updateCurrentPlaying(defaultSource)
             }
 
-            tempMediaSources.forEach { frp ->
+            mediaSourceList.filter { source -> !source.isPrimary }.forEach { frp ->
                 run {
                     Log.i(TAG, "Added media source ${frp.title} with url ${frp.url}")
-                    exoPlayer?.addMediaItem(MediaItem.fromUri(Uri.parse(frp.url)))
+
+                    val mediaUrl = Uri.parse(frp.url)
+
+                    val mediaBuilder = MediaItem.Builder()
+                        .setUri(mediaUrl)
+                        .setLiveConfiguration(
+                            MediaItem.LiveConfiguration.Builder()
+                                .setMaxPlaybackSpeed(1.02f)
+                                .build()
+                        )
+
+                    if (frp.isAcc!!) {
+                        mediaBuilder.setMimeType(MimeTypes.AUDIO_AAC)
+                    }
+
+                    exoPlayer?.addMediaSource(buildMediaSource(mediaUrl, mediaBuilder.build()))
                 }
             }
 
@@ -227,6 +255,10 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer?.pause()
     }
 
+    fun stop() {
+        exoPlayer?.stop()
+    }
+
     fun playOrPause() {
         if (isPlaying()) {
             exoPlayer?.pause()
@@ -237,14 +269,20 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
     fun nextMediaItem() {
         Log.i(TAG, "Seeking to next media item...")
-        eventBus.post(FRPPlayerEvent(data = "enqueue_next_source"))
-        exoPlayer?.seekToNextMediaItem()
+        exoPlayer?.seekToNext()
+        exoPlayer?.prepare()
+        exoPlayer?.play()
+        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
+        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
     }
 
     fun prevMediaItem() {
         Log.i(TAG, "Seeking to prev media item...")
-        eventBus.post(FRPPlayerEvent(data = "enqueue_prev_source"))
-        exoPlayer?.seekToPreviousMediaItem()
+        exoPlayer?.seekToPrevious()
+        exoPlayer?.prepare()
+        exoPlayer?.play()
+        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
+        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
     }
 
     fun seekToMediaItem(index: Int, playIfReady: Boolean) {
@@ -252,6 +290,8 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer?.apply {
             playWhenReady = playIfReady
         }
+        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
+        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
     }
 
     fun setVolume(volume: Float) {
@@ -260,27 +300,41 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         }
         Log.i(TAG, "Changing volume")
         exoPlayer?.volume = volume
+        eventBus.post(FRPPlayerEvent(volumeChangeEvent = FRPVolumeChangeEvent(volume)))
     }
 
     fun useIcyData(status: Boolean = false) {
         this.useICYData = status
     }
 
-    fun initPeriodicMetaData(milliseconds: Float? = 30000F) {
-        if (runnableMetaData == null) {
-            runnableMetaData = object : Runnable {
-                override fun run() {
-                    currentMetaData = exoPlayer?.mediaMetadata
-                    eventBus.post(FRPPlayerEvent(FRPIcyMetaData = FRPIcyMetaData(currentMetaData)))
-                    handler.postDelayed(this, milliseconds!!.toLong())
-                }
-            }
-            handler.postDelayed(runnableMetaData!!, milliseconds!!.toLong())
-        }
-    }
-
     fun getMetaData(): FRPIcyMetaData {
         return FRPIcyMetaData(currentMetaData)
+    }
+
+    private fun updateCurrentPlaying(defaultSource: FRPAudioSource): FRPCurrentSource {
+        currentPlayingItem =
+            FRPCurrentSource(title = defaultSource.title, description = defaultSource.description)
+        eventBus.post(FRPPlayerEvent(currentSource = currentPlayingItem))
+        return currentPlayingItem!!
+    }
+
+    private fun buildMediaSource(mediaUrl: Uri, mediaItem: MediaItem): MediaSource {
+
+        val defaultDataSource = DefaultHttpDataSource.Factory().apply {
+            setUserAgent(Util.getUserAgent(context, "flutter-radio-player"))
+            if (useICYData) {
+                setDefaultRequestProperties(mapOf("Icy-MetaData" to "1"))
+            }
+        }
+
+        return when (val type = Util.inferContentType(mediaUrl)) {
+            C.TYPE_HLS -> HlsMediaSource.Factory(defaultDataSource).createMediaSource(mediaItem)
+            C.TYPE_OTHER -> ProgressiveMediaSource.Factory(defaultDataSource)
+                .createMediaSource(mediaItem)
+            else -> {
+                throw FRPException("Unsupported type: $type")
+            }
+        }
     }
 
     inner class LocalBinder : Binder() {

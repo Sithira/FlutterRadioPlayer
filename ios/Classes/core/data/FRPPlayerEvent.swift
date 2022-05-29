@@ -8,7 +8,9 @@
 import Foundation
 
 struct FRPPlayerEvent: Codable {
-    var data: String? = nil
+    var currentSource: FRPCurrentSource? = nil
+    var volumeChangeEvent: FRPVolumeChangeEvent? = nil
+    var type: String? = nil
     var playbackStatus: String? = nil
     var icyMetaDetails: String? = nil
 }
