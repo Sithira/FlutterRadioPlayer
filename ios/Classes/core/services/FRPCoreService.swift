@@ -114,7 +114,7 @@ class FRPCoreService: NSObject {
     
     func setVolume(volume: Float) -> Float {
         player.volume = volume
-        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(data: FRPConsts.FRP_VOLUME_CHANGED))
+        FRPNotificationUtil.shared.publish(eventData: FRPPlayerEvent(type: FRPConsts.FRP_VOLUME_CHANGED))
         return volume
     }
     
