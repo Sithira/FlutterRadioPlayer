@@ -260,7 +260,7 @@ class StreamingCore : Service(), AudioManager.OnAudioFocusChangeListener {
                     @Nullable
                     override fun createCurrentContentIntent(player: Player): PendingIntent {
                         var intent = Intent(this@StreamingCore, activity!!.javaClass)
-                        var contentPendingIntent = PendingIntent.getActivity(this@StreamingCore, 0, intent, 0);
+                        var contentPendingIntent = PendingIntent.getActivity(this@StreamingCore, 0, intent, PendingIntent.FLAG_IMMUTABLE);
                         return contentPendingIntent;
                     }
 
