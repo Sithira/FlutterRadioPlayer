@@ -32,10 +32,14 @@ class _FRPSourceListState extends State<FRPSourceList> {
           MediaSources mediaItem = widget.frpSource.mediaSources![index];
           return InkWell(
             onTap: () => {
-              setState(() => {
-                    currentIndex = index,
-                    widget.flutterRadioPlayer.seekToMediaSource(index, true)
-                  }),
+              setState(
+                () => {
+                  currentIndex = index,
+                  widget.flutterRadioPlayer.seekToMediaSource(index, true),
+                  widget.flutterRadioPlayer.useIcyData(true),
+                  // widget.flutterRadioPlayer.
+                },
+              ),
             },
             child: Container(
               margin: const EdgeInsets.all(5),

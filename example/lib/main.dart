@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
 import 'package:flutter_radio_player/models/frp_source_modal.dart';
-import 'package:flutter_radio_player_example/FRPlayer.dart';
+import 'package:flutter_radio_player_example/frp_player.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _flutterRadioPlayer.initPlayer();
+    _flutterRadioPlayer.addMediaSources(frpSource);
   }
 
   @override
@@ -61,6 +62,7 @@ class _MyAppState extends State<MyApp> {
                     FRPlayer(
                       flutterRadioPlayer: _flutterRadioPlayer,
                       frpSource: frpSource,
+                      useIcyData: true,
                     ),
                   ],
                 ),

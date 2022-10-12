@@ -6,20 +6,23 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import androidx.annotation.NonNull
 import com.google.gson.Gson
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.*
-import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRP_STOPPED
+import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPAudioSource
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRP_STOPPED
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.events.FRPPlayerEvent
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.exceptions.FRPException
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.services.FRPCoreService
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 
 class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler {
 
@@ -43,11 +46,11 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
 
     private lateinit var frpRadioPlayerService: FRPCoreService
 
-    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         this.flutterPluginBinding = flutterPluginBinding
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         Log.i(TAG, "::: Detaching FRP from FlutterEngine :::")
         this.context = null
         frpChannel?.setMethodCallHandler(null)
@@ -122,7 +125,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
     }
 
-    @Subscribe
+    @Subscribe(threadMode = ThreadMode.MAIN)
     fun handleFRPEvents(event: FRPPlayerEvent) {
         if (eventSink != null) {
             Log.d(TAG, "FRP Event data = $event")

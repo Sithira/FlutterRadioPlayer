@@ -28,9 +28,11 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
   String latestPlaybackStatus = "flutter_radio_stopped";
   String currentPlaying = "N/A";
   double volume = 0.5;
+  final nowPlayingTextController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    nowPlayingTextController.text = 'check';
     return StreamBuilder(
       stream: widget.flutterRadioPlayer.frpEventStream,
       builder: (context, snapshot) {
@@ -44,7 +46,8 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
             widget.updateCurrentStatus(latestPlaybackStatus);
           }
           if (frpEvent.icyMetaDetails != null) {
-            currentPlaying = frpEvent.icyMetaDetails!;
+            print('NOW PLAY: ${frpEvent.icyMetaDetails}');
+            nowPlayingTextController.text = frpEvent.icyMetaDetails!;
           }
           var statusIcon = const Icon(Icons.pause_circle_filled);
           switch (frpEvent.playbackStatus) {
@@ -73,14 +76,12 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        Text(
-                          "Now playing: $currentPlaying",
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.0,
-                            fontFamily: 'Roboto',
-                            color: Color(0xFF212121),
-                            fontWeight: FontWeight.bold,
+                        TextField(
+                          controller: nowPlayingTextController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            label: Text('Now playing'),
+                            disabledBorder: InputBorder.none,
                           ),
                         ),
                         Row(
