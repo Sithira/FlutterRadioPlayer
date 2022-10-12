@@ -36,6 +36,7 @@ class FRPPlayerListener(
         if (frpCoreService.useICYData) {
             frpCoreService.currentMetaData = mediaMetadata
             if (!mediaMetadata.title.isNullOrEmpty()) {
+                Log.i(TAG, "CURRENT SONG: " + mediaMetadata.title.toString())
                 eventBus.post(FRPPlayerEvent(icyMetaDetails = mediaMetadata.title.toString()))
                 playerNotificationManager?.invalidate()
             }

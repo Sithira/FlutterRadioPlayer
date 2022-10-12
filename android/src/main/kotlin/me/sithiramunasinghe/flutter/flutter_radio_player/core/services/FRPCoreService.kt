@@ -10,6 +10,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
+import com.google.android.exoplayer2.metadata.MetadataOutput
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
@@ -52,9 +53,9 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     var currentMetaData: MediaMetadata? = null
     var mediaSourceList: List<FRPAudioSource> = emptyList()
     var useICYData: Boolean = false
-    var currentPlayingItem: FRPCurrentSource? = null
+    private var currentPlayingItem: FRPCurrentSource? = null
 
-    var handler: Handler = Handler(Looper.getMainLooper())
+    private var handler: Handler = Handler(Looper.getMainLooper())
 
     private val binder = LocalBinder()
     private var exoPlayer: ExoPlayer? = null
@@ -75,7 +76,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.CONTENT_TYPE_MUSIC)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .build(), true
             )
             .setLivePlaybackSpeedControl(
@@ -92,7 +93,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             it.playWhenReady = false
         }
 
-        exoPlayer?.addAnalyticsListener(EventLogger(null));
+        exoPlayer?.addAnalyticsListener(EventLogger())
 
         Log.i(TAG, "::::: END FlutterRadioPlayerService::onCreate ::::")
     }
@@ -328,8 +329,8 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         }
 
         return when (val type = Util.inferContentType(mediaUrl)) {
-            C.TYPE_HLS -> HlsMediaSource.Factory(defaultDataSource).createMediaSource(mediaItem)
-            C.TYPE_OTHER -> ProgressiveMediaSource.Factory(defaultDataSource)
+            C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(defaultDataSource).createMediaSource(mediaItem)
+            C.CONTENT_TYPE_OTHER -> ProgressiveMediaSource.Factory(defaultDataSource)
                 .createMediaSource(mediaItem)
             else -> {
                 throw FRPException("Unsupported type: $type")
