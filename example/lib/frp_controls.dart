@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
 import 'package:flutter_radio_player/models/frp_player_event.dart';
@@ -32,21 +33,25 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
 
   @override
   Widget build(BuildContext context) {
-    nowPlayingTextController.text = 'check';
     return StreamBuilder(
       stream: widget.flutterRadioPlayer.frpEventStream,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           FRPPlayerEvents frpEvent =
               FRPPlayerEvents.fromJson(jsonDecode(snapshot.data as String));
-          print(
-              "FRP EVENT FLUTTER = ${frpEvent.playbackStatus} | ${frpEvent.icyMetaDetails} | ${frpEvent.data}");
+          if (kDebugMode) {
+            print("====== EVENT START =====");
+            print("Playback status: ${frpEvent.playbackStatus}");
+            print("Icy details: ${frpEvent.icyMetaDetails}");
+            print("Other: ${frpEvent.data}");
+            print("====== EVENT END =====");
+          }
           if (frpEvent.playbackStatus != null) {
             latestPlaybackStatus = frpEvent.playbackStatus!;
             widget.updateCurrentStatus(latestPlaybackStatus);
           }
           if (frpEvent.icyMetaDetails != null) {
-            print('NOW PLAY: ${frpEvent.icyMetaDetails}');
+            currentPlaying = frpEvent.icyMetaDetails!;
             nowPlayingTextController.text = frpEvent.icyMetaDetails!;
           }
           var statusIcon = const Icon(Icons.pause_circle_filled);
@@ -76,14 +81,7 @@ class _FRPPlayerControlsState extends State<FRPPlayerControls> {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        TextField(
-                          controller: nowPlayingTextController,
-                          enabled: false,
-                          decoration: const InputDecoration(
-                            label: Text('Now playing'),
-                            disabledBorder: InputBorder.none,
-                          ),
-                        ),
+                        Text(currentPlaying),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
