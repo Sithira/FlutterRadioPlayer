@@ -31,7 +31,7 @@ Fixed bugs and slightly improved documentation.
 Fixed bugs, reorganized code and improved documentation.
 
 * Added setUrl method to dynamically change the playing URL.
-* Improved documentation. 
+* Improved documentation.
 
 # 1.0.6
 
@@ -48,4 +48,10 @@ Fixed bugs, reorganized code and improved documentation.
 * Updated exo-player version
 * Bug fixes and improvments
 
-
+# 2.0.0
+* Completely Rewritten from scratch with backward compatibility in-mind
+* Supports multiple media-sources
+* Better Events / Reactivity
+* Better watchOS / WearOS support
+* Better native control support
+* New methods to control the player better
