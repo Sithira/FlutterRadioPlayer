@@ -55,3 +55,6 @@ Fixed bugs, reorganized code and improved documentation.
 * Better watchOS / WearOS support
 * Better native control support
 * New methods to control the player better
+
+# 2.0.1
+* Updated for better rating
