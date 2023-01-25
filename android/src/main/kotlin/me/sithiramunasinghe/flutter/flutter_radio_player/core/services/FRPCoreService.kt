@@ -196,7 +196,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
                             .build()
                     )
 
-                if (defaultSource.isAcc!!) {
+                if (defaultSource.isAcc == true) {
                     mediaBuilder.setMimeType(MimeTypes.AUDIO_AAC)
                     Log.d(TAG, "is an AAC media source")
                 }
