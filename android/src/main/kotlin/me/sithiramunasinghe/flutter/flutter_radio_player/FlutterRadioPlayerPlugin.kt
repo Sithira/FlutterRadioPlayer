@@ -130,6 +130,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         if (eventSink != null) {
             Log.d(TAG, "FRP Event data = $event")
             if (event.playbackStatus != null) {
+                // TODO reconsider unbinding service on stop because it might be too cumbersome to rebind it when resuming
                 if (event.playbackStatus == FRP_STOPPED) {
                     Log.i(TAG, "Service unbind....")
                     isBound = false
