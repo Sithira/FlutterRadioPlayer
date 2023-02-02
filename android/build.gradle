@@ -58,6 +58,8 @@ dependencies {
 
     implementation "androidx.multidex:multidex:2.0.1"
 
-    implementation "com.google.android.exoplayer:exoplayer:$exo_player_version"
+    implementation "com.google.android.exoplayer:exoplayer-core:$exo_player_version"
+    implementation "com.google.android.exoplayer:exoplayer-ui:$exo_player_version"
+    implementation "com.google.android.exoplayer:exoplayer-hls:$exo_player_version"
     implementation "com.google.android.exoplayer:extension-mediasession:$exo_player_version"
 }
