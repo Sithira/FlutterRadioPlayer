@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.*
 import android.support.v4.media.session.MediaSessionCompat
+import androidx.core.app.NotificationCompat.ServiceNotificationBehavior
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -71,10 +72,12 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             mediaSession.release()
         }
 
-        if (exoPlayer != null) {
-            exoPlayer?.release()
+        exoPlayer?.release()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            stopForeground(false)
         }
-
         mediaSessionConnector?.setPlayer(null)
         playerNotificationManager?.setPlayer(null)
 
@@ -260,6 +263,11 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     }
 
     fun pause() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_DETACH)
+        } else {
+            stopForeground(false)
+        }
         exoPlayer?.pause()
     }
 
