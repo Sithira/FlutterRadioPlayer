@@ -37,6 +37,7 @@ class FlutterRadioPlayer {
     }
     _eventStream ??=
         _eventChannel.receiveBroadcastStream().map<String?>((event) => event);
+    _methodChannel.invokeMethod("init_service");
     if (kDebugMode) {
       print("Initialized Event Channels: Completed");
     }
