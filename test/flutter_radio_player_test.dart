@@ -1,6 +1,5 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_radio_player/flutter_radio_player.dart';
 
 void main() {
   const MethodChannel channel = MethodChannel('flutter_radio_player');
