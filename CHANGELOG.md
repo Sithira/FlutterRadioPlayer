@@ -58,3 +58,6 @@ Fixed bugs, reorganized code and improved documentation.
 
 # 2.0.1
 * Updated for better rating
+
+# 2.0.2
+* Fixed compiling error. 

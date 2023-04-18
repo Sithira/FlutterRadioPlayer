@@ -1,7 +1,7 @@
 buildscript {
 
     ext.kotlin_version = '1.5.32'
-    ext.exo_player_version = '2.18.1'
+    ext.exo_player_version = '2.18.5'
 
     repositories {
         google()

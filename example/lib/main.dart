@@ -20,17 +20,19 @@ class _MyAppState extends State<MyApp> {
   final FRPSource frpSource = FRPSource(
     mediaSources: <MediaSources>[
       MediaSources(
-          url: "http://pavo.prostreaming.net:8052/stream",
-          description: "Stream with ICY",
-          isPrimary: true,
-          title: "Z Fun hundred",
-          isAac: true),
+        url: "http://167.71.37.143:8000/radio.mp3",
+        description: "ONMAX.FM",
+        isPrimary: true,
+        title: "ONMAX.FM",
+        isAac: true,
+      ),
       MediaSources(
-          url: "http://209.133.216.3:7018/;stream.mp3",
-          description: "Hiru FM Sri Lanka",
-          isPrimary: false,
-          title: "HiruFM",
-          isAac: false),
+        url: "https://radio.lotustechnologieslk.net:2020/stream/hirufmgarden",
+        description: "Hiru FM Sri Lanka",
+        isPrimary: false,
+        title: "HiruFM",
+        isAac: false,
+      ),
     ],
   );
 
