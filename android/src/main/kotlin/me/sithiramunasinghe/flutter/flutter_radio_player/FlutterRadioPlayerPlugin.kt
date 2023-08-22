@@ -163,7 +163,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "use_icy_data" -> {
                 if (!isBound) {
-                    result.error("FRP_002", "Failed to call init_periodic_metadata", null)
+                    result.error("FRP_002", "Failed to call use_icy_data", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 frpRadioPlayerService.useIcyData(status = true)
@@ -187,7 +187,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "stop" -> {
                 if (!isBound) {
-                    result.error("FRP_004", "Failed to call pause", null)
+                    result.error("FRP_004", "Failed to call stop", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 frpRadioPlayerService.stop()
@@ -211,7 +211,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "previous_source" -> {
                 if (!isBound) {
-                    result.error("FRP_007", "Failed to call prev_source", null)
+                    result.error("FRP_007", "Failed to call previous_source", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 frpRadioPlayerService.prevMediaItem()
@@ -219,7 +219,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "seek_source_to_index" -> {
                 if (!isBound) {
-                    result.error("FRP_008", "Failed to call prev_source", null)
+                    result.error("FRP_008", "Failed to call seek_source_to_index", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
                 val sourceIndex: Int = call.argument<Int>("source_index") ?: 0
@@ -262,7 +262,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
             }
             "get_playback_state" -> {
                 if (!isBound) {
-                    result.error("FRP_013", "Failed to call set_sources", null)
+                    result.error("FRP_013", "Failed to call get_playback_state", null)
 
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
