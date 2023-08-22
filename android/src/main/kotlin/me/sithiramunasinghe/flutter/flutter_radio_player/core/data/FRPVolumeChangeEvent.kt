@@ -1,3 +1,8 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player.core.data
 
-data class FRPVolumeChangeEvent(val volume: Float = 0.5F)
+import com.google.gson.annotations.SerializedName
+
+data class FRPVolumeChangeEvent(
+        @SerializedName("volume")
+        val volume: Float = 0.5F
+)
