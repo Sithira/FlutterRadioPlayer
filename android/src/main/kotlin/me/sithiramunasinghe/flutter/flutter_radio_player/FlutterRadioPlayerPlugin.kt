@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import com.google.gson.Gson
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -15,6 +14,8 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPAudioSource
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRP_STOPPED
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.events.FRPPlayerEvent
@@ -30,7 +31,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         private const val TAG = "FlutterRadioPlayerPlugin"
         private const val METHOD_CHANNEL_NAME = "flutter_radio_player/method_channel"
         private const val EVENT_CHANNEL_NAME = "flutter_radio_player/event_channel"
-        private val GSON = Gson()
     }
 
     var serviceIntent: Intent? = null
@@ -136,7 +136,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                     context!!.unbindService(serviceConnection!!)
                 }
             }
-            eventSink?.success(GSON.toJson(event))
+            eventSink?.success(Json.encodeToString(event))
         } else {
             Log.i(TAG, "EventSink null")
         }
@@ -273,7 +273,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
                     result.error("FRP_014", "Failed to call get_current_metadata", null)
                     throw FRPException("FRPCoreService has not been initialized yet")
                 }
-                result.success(GSON.toJson(frpRadioPlayerService.getMetaData()))
+                result.success(Json.encodeToString(frpRadioPlayerService.getMetaData()))
             }
             "get_is_playing" -> {
                 if (!isBound) {

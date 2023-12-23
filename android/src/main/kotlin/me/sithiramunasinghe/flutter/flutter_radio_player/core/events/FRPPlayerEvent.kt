@@ -1,9 +1,10 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player.core.events
 
+import kotlinx.serialization.Serializable
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPCurrentSource
-import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPIcyMetaData
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.data.FRPVolumeChangeEvent
 
+@Serializable
 data class FRPPlayerEvent(
     val type: String? = null,
     val currentSource: FRPCurrentSource? = null,

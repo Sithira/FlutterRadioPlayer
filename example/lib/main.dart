@@ -20,10 +20,10 @@ class _MyAppState extends State<MyApp> {
   final FRPSource frpSource = FRPSource(
     mediaSources: <MediaSources>[
       MediaSources(
-        url: "http://167.71.37.143:8000/radio.mp3",
-        description: "ONMAX.FM",
+        url: "https://puma.streemlion.com:3540/stream",
+        description: "Triple Threat FM Radio",
         isPrimary: true,
-        title: "ONMAX.FM",
+        title: "Triple Threat FM Radio",
         isAac: true,
       ),
       MediaSources(
@@ -40,7 +40,6 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _flutterRadioPlayer.initPlayer();
-    _flutterRadioPlayer.addMediaSources(frpSource);
   }
 
   @override

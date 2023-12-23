@@ -1,7 +1,6 @@
 buildscript {
-
-    ext.kotlin_version = '1.5.32'
-    ext.exo_player_version = '2.18.5'
+    ext.kotlin_version = '1.9.0'
+    ext.exo_player_version = '2.19.1'
 
     repositories {
         google()
@@ -25,11 +24,13 @@ rootProject.allprojects {
     }
 }
 
+
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
 
 android {
-    compileSdkVersion 31
+    compileSdk 31
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -50,15 +51,15 @@ android {
     }
 }
 
-
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
 
     implementation "org.greenrobot:eventbus:3.3.1"
-    implementation 'com.google.code.gson:gson:2.8.9'
 
     implementation "androidx.multidex:multidex:2.0.1"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2"
 
     implementation "com.google.android.exoplayer:exoplayer:$exo_player_version"
     implementation "com.google.android.exoplayer:extension-mediasession:$exo_player_version"

@@ -28,7 +28,6 @@ class _FRPlayerState extends State<FRPlayer> {
   @override
   void initState() {
     super.initState();
-    widget.flutterRadioPlayer.useIcyData(widget.useIcyData);
   }
 
   @override
@@ -38,8 +37,10 @@ class _FRPlayerState extends State<FRPlayer> {
       children: [
         FRPPlayerControls(
           flutterRadioPlayer: widget.flutterRadioPlayer,
-          addSourceFunction: () =>
-              widget.flutterRadioPlayer.addMediaSources(widget.frpSource),
+          addSourceFunction: () => {
+            widget.flutterRadioPlayer.useIcyData(widget.useIcyData),
+            widget.flutterRadioPlayer.addMediaSources(widget.frpSource)
+          },
           updateCurrentStatus: (String status) => frpStatus = status,
           nextSource: () => {},
           prevSource: () => {},
