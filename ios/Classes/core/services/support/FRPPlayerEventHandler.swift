@@ -15,9 +15,9 @@ class FRPPlayerEventHandler: NSObject {
         print("::::: EVENT HANDLER INIT ::::")
     }
     
-    static func handleMetaDataChanges(metaDetails: Array<AVMetadataItem>) {
+    static func handleMetaDataChanges(metaGroup: Array<AVTimedMetadataGroup>) {
         if (FRPCoreService.shared.useIcyData) {
-            metaDetails
+            metaGroup.first?.items
                 .compactMap({ $0 as AVMetadataItem })
                 .forEach({ meta in
                     print("Meta details \(meta)")
