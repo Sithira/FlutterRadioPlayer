@@ -108,6 +108,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
         if (exoPlayer != null) {
             exoPlayer?.release()
+            exoPlayer = null
         }
 
         mediaSessionConnector?.setPlayer(null)
@@ -268,13 +269,20 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         }
     }
 
+    private fun postCurrentPlayingEvent() {
+        exoPlayer?.currentMediaItemIndex?.let {
+            if (it < mediaSourceList.count()) {
+                eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(mediaSourceList[it])))
+            }
+        }
+    }
+
     fun nextMediaItem() {
         Log.i(TAG, "Seeking to next media item...")
         exoPlayer?.seekToNext()
         exoPlayer?.prepare()
         exoPlayer?.play()
-        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
-        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
+        postCurrentPlayingEvent()
     }
 
     fun prevMediaItem() {
@@ -282,8 +290,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer?.seekToPrevious()
         exoPlayer?.prepare()
         exoPlayer?.play()
-        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
-        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
+        postCurrentPlayingEvent()
     }
 
     fun seekToMediaItem(index: Int, playIfReady: Boolean) {
@@ -291,8 +298,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer?.apply {
             playWhenReady = playIfReady
         }
-        val currentMedia = mediaSourceList[exoPlayer?.currentMediaItemIndex!!]
-        eventBus.post(FRPPlayerEvent(currentSource = updateCurrentPlaying(currentMedia)))
+        postCurrentPlayingEvent()
     }
 
     fun setVolume(volume: Float) {

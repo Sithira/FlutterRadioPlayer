@@ -76,7 +76,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
 
     override fun onDetachedFromActivity() {
         if (isBound) {
-            frpRadioPlayerService.onDestroy()
+            frpRadioPlayerService.stop()
         }
         EventBus.getDefault().unregister(this)
     }
