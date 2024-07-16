@@ -15,4 +15,8 @@ void main() {
   tearDown(() {
     channel.setMockMethodCallHandler(null);
   });
+
+  // test('getPlatformVersion', () async {
+  //   expect(await FlutterRadioPlayer.platformVersion, '42');
+  // });
 }

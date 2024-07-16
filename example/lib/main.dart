@@ -1,40 +1,46 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:flutter_radio_player/models/frp_source_modal.dart';
+import 'package:flutter_radio_player_example/frp_player.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatefulWidget {
-  final playerState = FlutterRadioPlayer.flutter_radio_paused;
+  const MyApp({Key? key}) : super(key: key);
 
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  int _currentIndex = 0;
-  double volume = 0.8;
-  FlutterRadioPlayer _flutterRadioPlayer = new FlutterRadioPlayer();
+  final FlutterRadioPlayer _flutterRadioPlayer = FlutterRadioPlayer();
+
+  final FRPSource frpSource = FRPSource(
+    mediaSources: <MediaSources>[
+      MediaSources(
+        url: "http://167.71.37.143:8000/radio.mp3",
+        description: "ONMAX.FM",
+        isPrimary: true,
+        title: "ONMAX.FM",
+        isAac: true,
+      ),
+      MediaSources(
+        url: "https://radio.lotustechnologieslk.net:2020/stream/hirufmgarden",
+        description: "Hiru FM Sri Lanka",
+        isPrimary: false,
+        title: "HiruFM",
+        isAac: false,
+      ),
+    ],
+  );
 
   @override
   void initState() {
     super.initState();
-    initRadioService();
-  }
-
-  Future<void> initRadioService() async {
-    try {
-      await _flutterRadioPlayer.init(
-        "Flutter Radio Example",
-        "Live",
-        "http://209.133.216.3:7018/stream?type=http&nocache=1906",
-        "false",
-      );
-    } on PlatformException {
-      print("Exception occurred while trying to register the services.");
-    }
+    _flutterRadioPlayer.initPlayer();
+    _flutterRadioPlayer.addMediaSources(frpSource);
   }
 
   @override
@@ -42,122 +48,27 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Flutter Radio Player Example'),
+          title: const Text('Flutter Radio Player'),
         ),
         body: Center(
           child: Column(
-            children: <Widget>[
-              StreamBuilder(
-                stream: _flutterRadioPlayer.isPlayingStream,
-                initialData: widget.playerState,
-                builder:
-                    (BuildContext context, AsyncSnapshot<String> snapshot) {
-                  String returnData = snapshot.data;
-                  print("object data: " + returnData);
-                  switch (returnData) {
-                    case FlutterRadioPlayer.flutter_radio_stopped:
-                      return ElevatedButton(
-                        style: ElevatedButton.styleFrom(),
-                        child: Text("Start listening now"),
-                        onPressed: () async {
-                          await initRadioService();
-                        },
-                      );
-                      break;
-                    case FlutterRadioPlayer.flutter_radio_loading:
-                      return Text("Loading stream...");
-                    case FlutterRadioPlayer.flutter_radio_error:
-                      return ElevatedButton(
-                        style: ElevatedButton.styleFrom(),
-                        child: Text("Retry ?"),
-                        onPressed: () async {
-                          await initRadioService();
-                        },
-                      );
-                      break;
-                    default:
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          IconButton(
-                            onPressed: () async {
-                              print("button press data: " +
-                                  snapshot.data.toString());
-                              await _flutterRadioPlayer.playOrPause();
-                            },
-                            icon: snapshot.data ==
-                                    FlutterRadioPlayer.flutter_radio_playing
-                                ? Icon(Icons.pause)
-                                : Icon(Icons.play_arrow),
-                          ),
-                          IconButton(
-                            onPressed: () async {
-                              await _flutterRadioPlayer.stop();
-                            },
-                            icon: Icon(Icons.stop),
-                          )
-                        ],
-                      );
-                      break;
-                  }
-                },
-              ),
-              Slider(
-                value: volume,
-                min: 0,
-                max: 1.0,
-                onChanged: (value) => setState(
-                  () {
-                    volume = value;
-                    _flutterRadioPlayer.setVolume(volume);
-                  },
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                margin: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(5),
+                child: Column(
+                  children: [
+                    FRPlayer(
+                      flutterRadioPlayer: _flutterRadioPlayer,
+                      frpSource: frpSource,
+                      useIcyData: true,
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                "Volume: " + (volume * 100).toStringAsFixed(0),
-              ),
-              SizedBox(
-                height: 15,
-              ),
-              Text("Metadata Track "),
-              StreamBuilder<String>(
-                initialData: "",
-                stream: _flutterRadioPlayer.metaDataStream,
-                builder: (context, snapshot) {
-                  return Text(snapshot.data);
-                },
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(),
-                child: Text("Change URL"),
-                onPressed: () async {
-                  _flutterRadioPlayer.setUrl(
-                    "http://209.133.216.3:7018/;stream.mp3",
-                    "false",
-                  );
-                },
-              )
             ],
           ),
-        ),
-        bottomNavigationBar: new BottomNavigationBar(
-          currentIndex: this._currentIndex,
-          onTap: (int index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          items: [
-            BottomNavigationBarItem(
-              icon: new Icon(Icons.home),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: new Icon(Icons.pages),
-              label: "Second Page",
-            )
-          ],
         ),
       ),
     );
