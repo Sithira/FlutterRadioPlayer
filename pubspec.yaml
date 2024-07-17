@@ -1,10 +1,10 @@
 name: flutter_radio_player
 description: Online Radio Player for Flutter which enable to play streaming URL. Supports Android and iOS as well as WearOs and watchOs
-version: 2.0.2
+version: 2.0.3
 homepage: "https://github.com/Sithira/FlutterRadioPlayer"
 
 environment:
-  sdk: ">=2.15.1 <3.0.0"
+  sdk: ">=2.15.1 <4.0.0"
   flutter: ">=2.5.0"
 
 dependencies:
