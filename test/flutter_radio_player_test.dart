@@ -1,22 +1,29 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:flutter_radio_player/flutter_radio_player_platform_interface.dart';
+import 'package:flutter_radio_player/flutter_radio_player_method_channel.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+class MockFlutterRadioPlayerPlatform
+    with MockPlatformInterfaceMixin
+    implements FlutterRadioPlayerPlatform {
+
+  @override
+  Future<String?> getPlatformVersion() => Future.value('42');
+}
 
 void main() {
-  const MethodChannel channel = MethodChannel('flutter_radio_player');
+  final FlutterRadioPlayerPlatform initialPlatform = FlutterRadioPlayerPlatform.instance;
 
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUp(() {
-    channel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return '42';
-    });
+  test('$MethodChannelFlutterRadioPlayer is the default instance', () {
+    expect(initialPlatform, isInstanceOf<MethodChannelFlutterRadioPlayer>());
   });
 
-  tearDown(() {
-    channel.setMockMethodCallHandler(null);
-  });
+  test('getPlatformVersion', () async {
+    FlutterRadioPlayer flutterRadioPlayerPlugin = FlutterRadioPlayer();
+    MockFlutterRadioPlayerPlatform fakePlatform = MockFlutterRadioPlayerPlatform();
+    FlutterRadioPlayerPlatform.instance = fakePlatform;
 
-  // test('getPlatformVersion', () async {
-  //   expect(await FlutterRadioPlayer.platformVersion, '42');
-  // });
+    expect(await flutterRadioPlayerPlugin.getPlatformVersion(), '42');
+  });
 }
