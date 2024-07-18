@@ -33,3 +33,8 @@ class FlutterRadioPlayerPlugin: FlutterPlugin, MethodCallHandler {
     channel.setMethodCallHandler(null)
   }
 }
+
+// https://github.com/oguzhaneksi/RadioRoam/tree/master
+// https://medium.com/@ouzhaneki/basic-background-playback-implementation-with-media3-mediasessionservice-4d571f15bdc2
+// https://developer.android.com/media/media3/session/background-playback
+// https://medium.com/@debz_exe/implementation-of-media-3-mastering-background-playback-with-mediasessionservice-and-5e130272c39e
