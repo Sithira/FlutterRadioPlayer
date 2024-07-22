@@ -41,7 +41,6 @@ Fixed bugs, reorganized code and improved documentation.
 
 * Fixed media meta-data on iOS
 
-
 # 1.1.0
 
 * Updated to NULL-SAFETY
@@ -49,6 +48,7 @@ Fixed bugs, reorganized code and improved documentation.
 * Bug fixes and improvments
 
 # 2.0.0
+
 * Completely Rewritten from scratch with backward compatibility in-mind
 * Supports multiple media-sources
 * Better Events / Reactivity
@@ -57,7 +57,13 @@ Fixed bugs, reorganized code and improved documentation.
 * New methods to control the player better
 
 # 2.0.1
+
 * Updated for better rating
 
 # 2.0.2
-* Fixed compiling error. 
+
+* Fixed compiling error.
+
+# 2.0.3
+
+* Bugfixes for Android 14+
