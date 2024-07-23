@@ -10,6 +10,12 @@ class MockFlutterRadioPlayerPlatform
 
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
+
+  @override
+  Future<void> play() {
+    // TODO: implement play
+    throw UnimplementedError();
+  }
 }
 
 void main() {

@@ -1,14 +1,10 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player.core
 
-import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
-import android.os.Build
-import android.os.Bundle
 import androidx.annotation.OptIn
-import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_IDLE
@@ -16,28 +12,27 @@ import androidx.media3.common.Player.STATE_READY
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.CommandButton
-import androidx.media3.session.MediaNotification
+import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSession.Builder
-import androidx.media3.session.MediaSession.Callback
 import androidx.media3.session.MediaSession.ControllerInfo
-import androidx.media3.session.MediaSessionService
-import androidx.media3.session.MediaStyleNotificationHelper
-import com.google.common.collect.ImmutableList
-import me.sithiramunasinghe.flutter.flutter_radio_player.R
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import io.flutter.plugin.common.EventChannel.EventSink
+import io.flutter.plugin.common.EventChannel.StreamHandler
+import me.sithiramunasinghe.flutter.flutter_radio_player.data.NowPlayingInfo
 
-
-class PlaybackService : MediaSessionService(), Callback {
-    @RequiresApi(Build.VERSION_CODES.O)
-    var channel: NotificationChannel =
-        NotificationChannel("", "PennSkanvTicChannel", NotificationManager.IMPORTANCE_MAX)
+class PlaybackService : MediaLibraryService() {
 
     private lateinit var player: Player
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
+    private var playBackEventSink: EventSink? = null
+    private var nowPlayingEventSink: EventSink? = null
+    private var playbackVolumeControl: EventSink? = null
 
     override fun onCreate() {
         super.onCreate()
+        initializeEventSink()
         initializeSessionAndPlayer()
     }
 
@@ -62,16 +57,34 @@ class PlaybackService : MediaSessionService(), Callback {
         }
     }
 
-    override fun onGetSession(controllerInfo: ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
     @OptIn(UnstableApi::class)
     private fun initializeSessionAndPlayer() {
-        player = ExoPlayer.Builder(this).build()
-        mediaSession = Builder(this, player)
-            .setCallback(this)
+
+        player = ExoPlayer.Builder(this)
+            .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .build()
+
+        mediaSession =
+            MediaLibrarySession.Builder(this, player, object : MediaLibrarySession.Callback {
+                override fun onAddMediaItems(
+                    mediaSession: MediaSession,
+                    controller: ControllerInfo,
+                    mediaItems: MutableList<MediaItem>
+                ): ListenableFuture<MutableList<MediaItem>> {
+                    return Futures.immediateFuture(mediaItems)
+                }
+            }).build()
+
+        val default = DefaultMediaNotificationProvider(this)
+        val appInfo = packageManager.getApplicationInfo(packageName, 0)
+        default.setSmallIcon(appInfo.icon)
+
+        setMediaNotificationProvider(default)
+
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) {
@@ -79,14 +92,41 @@ class PlaybackService : MediaSessionService(), Callback {
                 } else {
                     println("IsStopped")
                 }
+                playBackEventSink?.success(isPlaying)
             }
+
+            override fun onVolumeChanged(volume: Float) {
+                println("Volume = $volume")
+                if (playbackVolumeControl != null) {
+                    playbackVolumeControl!!.success(volume)
+                }
+                super.onVolumeChanged(volume)
+            }
+
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                println("======== TITLE => ${mediaMetadata.title}")
+                if (nowPlayingEventSink != null) {
+                    var nowPlayingTitle: String? = null
+                    if (mediaMetadata.title != null) {
+                        nowPlayingTitle = mediaMetadata.title.toString()
+                    }
+                    nowPlayingEventSink!!.success(
+                        NowPlayingInfo(
+                            title = nowPlayingTitle,
+                        ).toJson()
+                    )
+                }
+                super.onMediaMetadataChanged(mediaMetadata)
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == STATE_IDLE) {
-                    println("STOPPEDDDDDDDDDD")
+                    println("player is idle")
                 }
 
                 if (playbackState == STATE_READY) {
-                    println("PLAYIIINGGGGGGGGG")
+                    playBackEventSink?.success(false)
+                    println("player is ready")
                 }
             }
 
@@ -97,40 +137,40 @@ class PlaybackService : MediaSessionService(), Callback {
                 }
             }
         })
-        setMediaNotificationProvider(object : MediaNotification.Provider{
-            override fun createNotification(
-                mediaSession: MediaSession,
-                customLayout: ImmutableList<CommandButton>,
-                actionFactory: MediaNotification.ActionFactory,
-                onNotificationChangedCallback: MediaNotification.Provider.Callback
-            ): MediaNotification {
-                return updateNotification(mediaSession)
+    }
+
+    private fun initializeEventSink() {
+        EventChannelSink.getInstance().playbackEventChannel.setStreamHandler(object :
+            StreamHandler {
+            override fun onListen(arguments: Any?, events: EventSink?) {
+                playBackEventSink = events
             }
 
-            override fun handleCustomCommand(
-                session: MediaSession,
-                action: String,
-                extras: Bundle
-            ): Boolean {
-                return false
+            override fun onCancel(arguments: Any?) {
+                playBackEventSink = null
+            }
+        })
+
+        EventChannelSink.getInstance().nowPlayingEventChannel.setStreamHandler(object :
+            StreamHandler {
+            override fun onListen(arguments: Any?, events: EventSink?) {
+                nowPlayingEventSink = events
             }
 
+            override fun onCancel(arguments: Any?) {
+                nowPlayingEventSink = null
+            }
+        })
+
+        EventChannelSink.getInstance().playbackVolumeChannel.setStreamHandler(object :
+            StreamHandler {
+            override fun onListen(arguments: Any?, events: EventSink?) {
+                playbackVolumeControl = events
+            }
+
+            override fun onCancel(arguments: Any?) {
+                playbackVolumeControl = null
+            }
         })
     }
-
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun updateNotification(session: MediaSession): MediaNotification {
-
-        val notify = NotificationCompat.Builder(this,"fsdfdsfsdfs")
-            // This is globally changed every time when
-            // I add a new MediaItem from background service
-            .setContentTitle("Test")
-            .setContentText("Aaaa")
-            .setSmallIcon(R.drawable.media3_notification_small_icon)
-            .setStyle(MediaStyleNotificationHelper.MediaStyle(session))
-            .build()
-
-        return MediaNotification(9876, notify)
-    }
-
 }

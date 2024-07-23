@@ -36,14 +36,25 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <service
-            android:name="me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
-            <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
-            </intent-filter>
-        </service>
+<!--        <service-->
+<!--            android:name="me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService"-->
+<!--            android:exported="true"-->
+<!--            android:foregroundServiceType="mediaPlayback">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="androidx.media3.session.MediaLibraryService" />-->
+<!--            </intent-filter>-->
+<!--        </service>-->
+
+<!--        <service-->
+<!--            android:name="me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="true"-->
+<!--            android:foregroundServiceType="mediaPlayback">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="androidx.media3.session.MediaLibraryService"/>-->
+<!--                <action android:name="android.media.browse.MediaBrowserService" />-->
+<!--            </intent-filter>-->
+<!--        </service>-->
     </application>
 
     <!-- Required to query activities that can process text, see:
