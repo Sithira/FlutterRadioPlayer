@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.EventChannel.StreamHandler
+import me.sithiramunasinghe.flutter.flutter_radio_player.data.FlutterRadioVolumeChanged
 import me.sithiramunasinghe.flutter.flutter_radio_player.data.NowPlayingInfo
 
 class PlaybackService : MediaLibraryService() {
@@ -86,19 +87,25 @@ class PlaybackService : MediaLibraryService() {
         setMediaNotificationProvider(default)
 
         player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                nowPlayingEventSink?.success(null)
+                super.onMediaItemTransition(mediaItem, reason)
+            }
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    println("IsPlaying")
-                } else {
-                    println("IsStopped")
-                }
+                println("is playing = $isPlaying")
                 playBackEventSink?.success(isPlaying)
             }
 
             override fun onVolumeChanged(volume: Float) {
                 println("Volume = $volume")
                 if (playbackVolumeControl != null) {
-                    playbackVolumeControl!!.success(volume)
+                    playbackVolumeControl!!.success(
+                        FlutterRadioVolumeChanged(
+                            volume = volume,
+                            isMuted = false
+                        ).toJson()
+                    )
                 }
                 super.onVolumeChanged(volume)
             }

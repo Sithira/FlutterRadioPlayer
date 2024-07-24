@@ -68,7 +68,7 @@ class _MyAppState extends State<MyApp> {
                               _flutterRadioPlayerPlugin.play();
                             }
                           },
-                          icon: snapshot.data!
+                          icon: !snapshot.data!
                               ? Icon(Icons.play_arrow)
                               : Icon(Icons.pause),
                           iconSize: 50.0,
@@ -88,7 +88,7 @@ class _MyAppState extends State<MyApp> {
               StreamBuilder(
                 stream: _flutterRadioPlayerPlugin.getNowPlayingStream(),
                 builder: (context, snapshot) {
-                  if (snapshot.hasData) {
+                  if (snapshot.hasData && snapshot.data?.title != null) {
                     return Text("Now playing : ${snapshot.data?.title}");
                   }
                   return Text("N/A");
@@ -100,7 +100,7 @@ class _MyAppState extends State<MyApp> {
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     return Text(
-                        "Volume = ${snapshot.data?.volume} and IsMuted = ${snapshot.data?.isMuted}");
+                        "Volume = ${snapshot.data?.volume.floor()} and IsMuted = ${snapshot.data?.isMuted}");
                   }
                   return Text("No Vol data");
                 },

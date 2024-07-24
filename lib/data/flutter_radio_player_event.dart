@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ffi';
 
 class NowPlayingDataChanged {
   final String? title;
@@ -17,8 +16,8 @@ class NowPlayingDataChanged {
 }
 
 class DeviceVolumeDataChanged {
-  final Int? volume;
-  final Bool? isMuted;
+  final double volume;
+  final bool? isMuted;
 
   DeviceVolumeDataChanged({required this.volume, required this.isMuted});
 
