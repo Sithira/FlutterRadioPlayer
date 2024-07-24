@@ -63,67 +63,86 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
 
     @OptIn(UnstableApi::class)
     override fun onMethodCall(call: MethodCall, result: Result) {
-        println("Media controller status = $isMediaControllerAvailable")
         if (!isMediaControllerAvailable) {
             pendingCalls.add(Pair(call, result))
             return
         }
-        if (call.method == "initialize") {
-            val sources = call.argument<String>("sources")
-            val playWhenReady = call.argument<Boolean>("playWhenReady")
-            val decodedSources: List<FlutterRadioPlayerSource> =
-                Json.decodeFromString(sources!!)
-            mediaController!!.volume = 0.5F
-            mediaController!!.playWhenReady = playWhenReady!!
-            if (decodedSources.isNotEmpty()) {
-                mediaController!!.setMediaItems(decodedSources.map {
-                    val mediaItemBuilder = MediaItem.Builder().setUri(it.url)
-                    val mediaMeta = MediaMetadata.Builder()
-                    if (it.title.isNullOrEmpty()) {
-                        mediaMeta.setArtist(getAppName())
-                    } else {
-                        mediaMeta.setArtist(it.title)
-                    }
-                    if (!it.artwork.isNullOrEmpty()) {
-                        if ((it.artwork!!.contains("http") || it.artwork!!.contains("https"))) {
-                            mediaMeta.setArtworkUri(Uri.parse(it.artwork))
+        when (call.method) {
+            "initialize" -> {
+                val sources = call.argument<String>("sources")
+                val playWhenReady = call.argument<Boolean>("playWhenReady")
+                val decodedSources: List<FlutterRadioPlayerSource> =
+                    Json.decodeFromString(sources!!)
+                mediaController!!.volume = 0.5F
+                mediaController!!.playWhenReady = playWhenReady!!
+                if (decodedSources.isNotEmpty()) {
+                    mediaController!!.setMediaItems(decodedSources.map {
+                        val mediaItemBuilder = MediaItem.Builder().setUri(it.url)
+                        val mediaMeta = MediaMetadata.Builder()
+                        if (it.title.isNullOrEmpty()) {
+                            mediaMeta.setArtist(getAppName())
                         } else {
-                            mediaMeta.setArtworkData(
-                                Util.toByteArray(getBitmapFromAssets(it.artwork)!!),
-                                MediaMetadata.PICTURE_TYPE_FRONT_COVER
-                            )
+                            mediaMeta.setArtist(it.title)
                         }
-                    }
-                    mediaItemBuilder.setMediaMetadata(mediaMeta.build())
-                    mediaItemBuilder.build()
-                })
-                mediaController!!.prepare()
-            }
-        } else if (call.method == "playOrPause") {
-            if (mediaController!!.mediaItemCount != 0) {
-                if (mediaController!!.isPlaying) {
-                    mediaController!!.pause()
-                    return
+                        if (!it.artwork.isNullOrEmpty()) {
+                            if ((it.artwork!!.contains("http") || it.artwork!!.contains("https"))) {
+                                mediaMeta.setArtworkUri(Uri.parse(it.artwork))
+                            } else {
+                                mediaMeta.setArtworkData(
+                                    Util.toByteArray(getBitmapFromAssets(it.artwork)!!),
+                                    MediaMetadata.PICTURE_TYPE_FRONT_COVER
+                                )
+                            }
+                        }
+                        mediaItemBuilder.setMediaMetadata(mediaMeta.build())
+                        mediaItemBuilder.build()
+                    })
+                    mediaController!!.prepare()
                 }
+            }
+
+            "playOrPause" -> {
+                if (mediaController!!.mediaItemCount != 0) {
+                    if (mediaController!!.isPlaying) {
+                        mediaController!!.pause()
+                        return
+                    }
+                    mediaController!!.play()
+                }
+            }
+
+            "play" -> {
                 mediaController!!.play()
             }
-        } else if (call.method == "play") {
-            mediaController!!.play()
-        } else if (call.method == "pause") {
-            mediaController!!.pause()
-        } else if (call.method == "changeVolume") {
-            val volume = call.argument<Double>("volume")
-            mediaController!!.volume = volume!!.toFloat()
-        } else if (call.method == "getVolume") {
-            result.success(mediaController!!.volume)
-        } else if (call.method == "nextSource") {
-            mediaController!!.seekToNextMediaItem()
-        } else if (call.method == "prevSource") {
-            mediaController!!.seekToPreviousMediaItem()
-        } else {
-            result.notImplemented()
-        }
 
+            "pause" -> {
+                mediaController!!.pause()
+            }
+
+            "changeVolume" -> {
+                val volume = call.argument<Double>("volume")
+                mediaController!!.volume = volume!!.toFloat()
+            }
+
+            "getVolume" -> {
+                result.success(mediaController!!.volume)
+            }
+
+            "nextSource" -> {
+                mediaController!!.seekToNextMediaItem()
+            }
+
+            "prevSource" -> {
+                mediaController!!.seekToPreviousMediaItem()
+            }
+
+            "sourceAtIndex" -> {
+                val index = call.argument<Int>("index")
+                mediaController!!.seekToDefaultPosition(index!!)
+            }
+
+            else -> result.notImplemented()
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -164,15 +183,10 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
      */
     private fun getBitmapFromAssets(assetPath: String?): InputStream? {
         try {
-            // Initialize the FlutterLoader
             val flutterLoader = FlutterLoader()
             flutterLoader.startInitialization(applicationContext!!)
             flutterLoader.ensureInitializationComplete(applicationContext!!, null)
-
-            // Get the asset path
             val assetLookupKey = flutterLoader.getLookupKeyForAsset(assetPath!!)
-
-            // Access the asset manager and load the bitmap
             val assetManager: AssetManager = applicationContext!!.assets
             return assetManager.open(assetLookupKey)
 //            val inputStream = assetManager.open(assetLookupKey)
@@ -195,8 +209,3 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 }
-
-// https://github.com/oguzhaneksi/RadioRoam/tree/master
-// https://medium.com/@ouzhaneki/basic-background-playback-implementation-with-media3-mediasessionservice-4d571f15bdc2
-// https://developer.android.com/media/media3/session/background-playback
-// https://medium.com/@debz_exe/implementation-of-media-3-mastering-background-playback-with-mediasessionservice-and-5e130272c39e
