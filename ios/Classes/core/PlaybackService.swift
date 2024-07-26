@@ -108,6 +108,10 @@ class PlaybackService: NSObject {
         self.playbackVolumeControl?(volume)
     }
     
+    func jumpToItem(index: Int) {
+        try? player?.jumpToItem(atIndex: index, playWhenReady: player?.playWhenReady)
+    }
+    
     private func handleNowPlayingChanges(data: Array<AVTimedMetadataGroup>) {
         let nowPlayingData = data.first?.items.first
         if let nowPlayingAVMetaTitle = nowPlayingData?.value {

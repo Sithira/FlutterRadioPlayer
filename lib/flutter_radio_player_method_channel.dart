@@ -8,7 +8,6 @@ import 'flutter_radio_player_platform_interface.dart';
 
 /// An implementation of [FlutterRadioPlayerPlatform] that uses method channels.
 class MethodChannelFlutterRadioPlayer extends FlutterRadioPlayerPlatform {
-  /// The method channel used to interact with the native platform.
   @visibleForTesting
   final methodChannel = const MethodChannel('flutter_radio_player');
 
@@ -69,6 +68,11 @@ class MethodChannelFlutterRadioPlayer extends FlutterRadioPlayerPlatform {
   @override
   Future<void> previousSource() async {
     await methodChannel.invokeMethod("prevSource");
+  }
+
+  @override
+  Future<void> jumpToSourceIndex(int index) async {
+    await methodChannel.invokeMethod("jumpToItem", {"index": index});
   }
 
   @override

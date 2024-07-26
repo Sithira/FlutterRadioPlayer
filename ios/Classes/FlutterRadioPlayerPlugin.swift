@@ -52,6 +52,13 @@ public class FlutterRadioPlayerPlugin: NSObject, FlutterPlugin {
                     break
                 }
             }
+        case "sourceAtIndex":
+            if let args = call.arguments as? Dictionary<String, Any> {
+                if let sourceIndex = args["index"] as? Int {
+                    player.jumpToItem(index: sourceIndex)
+                    break
+                }
+            }
         default:
             result(FlutterMethodNotImplemented)
         }
