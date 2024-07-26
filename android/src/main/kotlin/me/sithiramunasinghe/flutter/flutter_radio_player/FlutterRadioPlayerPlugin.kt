@@ -1,7 +1,10 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
+import android.app.Activity
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.net.Uri
@@ -15,6 +18,8 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import io.flutter.embedding.engine.loader.FlutterLoader
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -27,20 +32,38 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService
 import me.sithiramunasinghe.flutter.flutter_radio_player.data.FlutterRadioPlayerSource
 import java.io.InputStream
 
-class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
+
+class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     private lateinit var channel: MethodChannel
     private var applicationContext: Context? = null
     private var mediaController: MediaController? = null
-    private var isMediaControllerAvailable = false
     private val pendingCalls = mutableListOf<Pair<MethodCall, Result>>()
+
+    companion object {
+        private var isMediaControllerAvailable = false
+        lateinit var sessionActivity: PendingIntent
+
+        var playBackEventSink: EventChannel.EventSink? = null
+        var nowPlayingEventSink: EventChannel.EventSink? = null
+        var playbackVolumeControl: EventChannel.EventSink? = null
+        private fun getSessionActivity(context: Context, activity: Activity) {
+            sessionActivity = PendingIntent.getActivity(
+                context, 0, Intent(context, activity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+    }
+
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_radio_player")
         channel.setMethodCallHandler(this)
         applicationContext = flutterPluginBinding.applicationContext
 
+        println("aaaaa")
         initEventChannels(flutterPluginBinding.binaryMessenger, EventChannelSink.getInstance())
+        initializeEventSink()
 
         val token = SessionToken(
             flutterPluginBinding.applicationContext, ComponentName(
@@ -63,12 +86,16 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
 
     @OptIn(UnstableApi::class)
     override fun onMethodCall(call: MethodCall, result: Result) {
-        if (!isMediaControllerAvailable) {
+        if (!isMediaControllerAvailable || playBackEventSink == null) {
             pendingCalls.add(Pair(call, result))
             return
         }
         when (call.method) {
             "initialize" -> {
+                if (mediaController!!.isPlaying) {
+                    playBackEventSink!!.success(true)
+                    return
+                }
                 val sources = call.argument<String>("sources")
                 val playWhenReady = call.argument<Boolean>("playWhenReady")
                 val decodedSources: List<FlutterRadioPlayerSource> =
@@ -146,8 +173,78 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        println("onDetachedFromEngine")
         channel.setMethodCallHandler(null)
+
+        EventChannelSink.getInstance().playbackEventChannel = null
+        EventChannelSink.getInstance().nowPlayingEventChannel = null
+        EventChannelSink.getInstance().playbackVolumeChannel = null
+
+        playbackVolumeControl = null
+        nowPlayingEventSink = null
+        playBackEventSink = null
         mediaController!!.release()
+        isMediaControllerAvailable = false
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        println("onAttachedToActivity")
+        getSessionActivity(binding.activity.applicationContext, binding.activity)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        println("onDetachedFromActivityForConfigChanges")
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        println("onReattachedToActivityForConfigChanges")
+        getSessionActivity(binding.activity.applicationContext, binding.activity)
+    }
+
+    override fun onDetachedFromActivity() {
+        println("onDetachedFromActivity")
+    }
+
+    /**
+     * Initialize events sink and event channels
+     */
+    private fun initializeEventSink() {
+        EventChannelSink.getInstance().playbackEventChannel?.setStreamHandler(object :
+            EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                playBackEventSink = events
+                pendingCalls.forEach { (call, result) ->
+                    onMethodCall(call, result)
+                }
+                pendingCalls.clear()
+            }
+
+            override fun onCancel(arguments: Any?) {
+                playBackEventSink = null
+            }
+        })
+
+        EventChannelSink.getInstance().nowPlayingEventChannel?.setStreamHandler(object :
+            EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                nowPlayingEventSink = events
+            }
+
+            override fun onCancel(arguments: Any?) {
+                nowPlayingEventSink = null
+            }
+        })
+
+        EventChannelSink.getInstance().playbackVolumeChannel?.setStreamHandler(object :
+            EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                playbackVolumeControl = events
+            }
+
+            override fun onCancel(arguments: Any?) {
+                playbackVolumeControl = null
+            }
+        })
     }
 
     private fun initEventChannels(
@@ -197,6 +294,11 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /**
+     * Get the application name
+     *
+     * @return App name
+     */
     private fun getAppName(): String? {
         try {
             val packageManager: PackageManager = applicationContext!!.packageManager

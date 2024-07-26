@@ -18,8 +18,10 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import io.flutter.plugin.common.EventChannel.EventSink
-import io.flutter.plugin.common.EventChannel.StreamHandler
+import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.nowPlayingEventSink
+import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.playBackEventSink
+import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.playbackVolumeControl
+import me.sithiramunasinghe.flutter.flutter_radio_player.FlutterRadioPlayerPlugin.Companion.sessionActivity
 import me.sithiramunasinghe.flutter.flutter_radio_player.data.FlutterRadioVolumeChanged
 import me.sithiramunasinghe.flutter.flutter_radio_player.data.NowPlayingInfo
 
@@ -27,13 +29,9 @@ class PlaybackService : MediaLibraryService() {
 
     private lateinit var player: Player
     private var mediaSession: MediaLibrarySession? = null
-    private var playBackEventSink: EventSink? = null
-    private var nowPlayingEventSink: EventSink? = null
-    private var playbackVolumeControl: EventSink? = null
 
     override fun onCreate() {
         super.onCreate()
-        initializeEventSink()
         initializeSessionAndPlayer()
     }
 
@@ -79,7 +77,9 @@ class PlaybackService : MediaLibraryService() {
                 ): ListenableFuture<MutableList<MediaItem>> {
                     return Futures.immediateFuture(mediaItems)
                 }
-            }).build()
+            })
+                .setSessionActivity(sessionActivity)
+                .build()
 
         val default = DefaultMediaNotificationProvider(this)
         val appInfo = packageManager.getApplicationInfo(packageName, 0)
@@ -143,41 +143,6 @@ class PlaybackService : MediaLibraryService() {
                 if (cause is HttpDataSourceException) {
                     println("Oh no")
                 }
-            }
-        })
-    }
-
-    private fun initializeEventSink() {
-        EventChannelSink.getInstance().playbackEventChannel.setStreamHandler(object :
-            StreamHandler {
-            override fun onListen(arguments: Any?, events: EventSink?) {
-                playBackEventSink = events
-            }
-
-            override fun onCancel(arguments: Any?) {
-                playBackEventSink = null
-            }
-        })
-
-        EventChannelSink.getInstance().nowPlayingEventChannel.setStreamHandler(object :
-            StreamHandler {
-            override fun onListen(arguments: Any?, events: EventSink?) {
-                nowPlayingEventSink = events
-            }
-
-            override fun onCancel(arguments: Any?) {
-                nowPlayingEventSink = null
-            }
-        })
-
-        EventChannelSink.getInstance().playbackVolumeChannel.setStreamHandler(object :
-            StreamHandler {
-            override fun onListen(arguments: Any?, events: EventSink?) {
-                playbackVolumeControl = events
-            }
-
-            override fun onCancel(arguments: Any?) {
-                playbackVolumeControl = null
             }
         })
     }

@@ -4,9 +4,9 @@ import io.flutter.plugin.common.EventChannel
 
 
 class EventChannelSink private constructor() {
-    lateinit var playbackEventChannel: EventChannel
-    lateinit var nowPlayingEventChannel: EventChannel
-    lateinit var playbackVolumeChannel: EventChannel
+    var playbackEventChannel: EventChannel? = null
+    var nowPlayingEventChannel: EventChannel? = null
+    var playbackVolumeChannel: EventChannel? = null
     companion object {
 
         @Volatile
