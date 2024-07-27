@@ -30,15 +30,15 @@ import kotlinx.serialization.json.Json
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.EventChannelSink
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService
 import me.sithiramunasinghe.flutter.flutter_radio_player.data.FlutterRadioPlayerSource
+import me.sithiramunasinghe.flutter.flutter_radio_player.data.NowPlayingInfo
 import java.io.InputStream
-
 
 class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     private lateinit var channel: MethodChannel
     private var applicationContext: Context? = null
     private var mediaController: MediaController? = null
-    private val pendingCalls = mutableListOf<Pair<MethodCall, Result>>()
+    private val queuedMethodInvokes = mutableListOf<Pair<MethodCall, Result>>()
 
     companion object {
         private var isMediaControllerAvailable = false
@@ -61,7 +61,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
         channel.setMethodCallHandler(this)
         applicationContext = flutterPluginBinding.applicationContext
 
-        println("aaaaa")
         initEventChannels(flutterPluginBinding.binaryMessenger, EventChannelSink.getInstance())
         initializeEventSink()
 
@@ -78,22 +77,24 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
         mediaControllerFuture.addListener({
             mediaController = mediaControllerFuture.get()
             isMediaControllerAvailable = true
-            pendingCalls.forEach { (call, result) ->
-                onMethodCall(call, result)
-            }
+            executePendingCalls()
         }, MoreExecutors.directExecutor())
     }
 
     @OptIn(UnstableApi::class)
     override fun onMethodCall(call: MethodCall, result: Result) {
         if (!isMediaControllerAvailable || playBackEventSink == null) {
-            pendingCalls.add(Pair(call, result))
+            queuedMethodInvokes.add(Pair(call, result))
             return
         }
         when (call.method) {
             "initialize" -> {
                 if (mediaController!!.isPlaying) {
                     playBackEventSink!!.success(true)
+                    nowPlayingEventSink!!.success(
+                        NowPlayingInfo(title = PlaybackService.latestMetadata?.title.toString())
+                            .toJson()
+                    )
                     return
                 }
                 val sources = call.argument<String>("sources")
@@ -156,14 +157,17 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
             }
 
             "nextSource" -> {
+                clearInMemoryNowPlayingInfo()
                 mediaController!!.seekToNextMediaItem()
             }
 
             "prevSource" -> {
+                clearInMemoryNowPlayingInfo()
                 mediaController!!.seekToPreviousMediaItem()
             }
 
             "sourceAtIndex" -> {
+                clearInMemoryNowPlayingInfo()
                 val index = call.argument<Int>("index")
                 mediaController!!.seekToDefaultPosition(index!!)
             }
@@ -213,10 +217,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
             EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 playBackEventSink = events
-                pendingCalls.forEach { (call, result) ->
-                    onMethodCall(call, result)
-                }
-                pendingCalls.clear()
             }
 
             override fun onCancel(arguments: Any?) {
@@ -228,6 +228,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
             EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 nowPlayingEventSink = events
+                executePendingCalls()
             }
 
             override fun onCancel(arguments: Any?) {
@@ -247,6 +248,29 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
         })
     }
 
+    /**
+     * Execute pending method calls
+     */
+    private fun executePendingCalls() {
+        if (mediaController == null) {
+            return
+        }
+        queuedMethodInvokes.forEach { (call, result) ->
+            onMethodCall(call, result)
+        }
+        queuedMethodInvokes.clear()
+    }
+
+    private fun clearInMemoryNowPlayingInfo() {
+        PlaybackService.latestMetadata = null
+    }
+
+    /**
+     * Invoke event channels
+     *
+     * @param binaryMessenger Binary messenger
+     * @param eventsChannelSink Event channel sink
+     */
     private fun initEventChannels(
         binaryMessenger: BinaryMessenger,
         eventsChannelSink: EventChannelSink

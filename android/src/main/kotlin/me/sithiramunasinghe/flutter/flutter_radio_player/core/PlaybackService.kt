@@ -30,6 +30,10 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var player: Player
     private var mediaSession: MediaLibrarySession? = null
 
+    companion object {
+        var latestMetadata: MediaMetadata? = null
+    }
+
     override fun onCreate() {
         super.onCreate()
         initializeSessionAndPlayer()
@@ -123,6 +127,7 @@ class PlaybackService : MediaLibraryService() {
                             title = nowPlayingTitle,
                         ).toJson()
                     )
+                    latestMetadata = mediaMetadata
                 }
                 super.onMediaMetadataChanged(mediaMetadata)
             }
@@ -141,7 +146,7 @@ class PlaybackService : MediaLibraryService() {
             override fun onPlayerError(error: PlaybackException) {
                 val cause = error.cause
                 if (cause is HttpDataSourceException) {
-                    println("Oh no")
+                    println("player error")
                 }
             }
         })
