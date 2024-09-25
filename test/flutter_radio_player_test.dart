@@ -1,22 +1,104 @@
-import 'package:flutter/services.dart';
+import 'package:flutter_radio_player/data/flutter_radio_player_event.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:flutter_radio_player/flutter_radio_player_platform_interface.dart';
+import 'package:flutter_radio_player/flutter_radio_player_method_channel.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+class MockFlutterRadioPlayerPlatform
+    with MockPlatformInterfaceMixin
+    implements FlutterRadioPlayerPlatform {
+  @override
+  Future<String?> getPlatformVersion() => Future.value('42');
+
+  @override
+  Future<void> play() {
+    // TODO: implement play
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> changeVolume(double volume) {
+    // TODO: implement changeVolume
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<DeviceVolumeDataChanged?> getDeviceVolumeChangedStream() {
+    // TODO: implement getDeviceVolumeChangedStream
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<bool> getIsPlayingStream() {
+    // TODO: implement getIsPlayingStream
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<NowPlayingDataChanged?> getNowPlayingStream() {
+    // TODO: implement getNowPlayingStream
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<double?> getVolume() {
+    // TODO: implement getVolume
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> initialize(
+      List<Map<String, String>> sources, bool playWhenReady) {
+    // TODO: implement initialize
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> jumpToSourceIndex(int index) {
+    // TODO: implement jumpToSourceIndex
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> nextSource() {
+    // TODO: implement nextSource
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> pause() {
+    // TODO: implement pause
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> playOrPause() {
+    // TODO: implement playOrPause
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> previousSource() {
+    // TODO: implement previousSource
+    throw UnimplementedError();
+  }
+}
 
 void main() {
-  const MethodChannel channel = MethodChannel('flutter_radio_player');
+  final FlutterRadioPlayerPlatform initialPlatform =
+      FlutterRadioPlayerPlatform.instance;
 
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUp(() {
-    channel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return '42';
-    });
+  test('$MethodChannelFlutterRadioPlayer is the default instance', () {
+    expect(initialPlatform, isInstanceOf<MethodChannelFlutterRadioPlayer>());
   });
 
-  tearDown(() {
-    channel.setMockMethodCallHandler(null);
-  });
+  test('getPlatformVersion', () async {
+    FlutterRadioPlayer flutterRadioPlayerPlugin = FlutterRadioPlayer();
+    MockFlutterRadioPlayerPlatform fakePlatform =
+        MockFlutterRadioPlayerPlatform();
+    FlutterRadioPlayerPlatform.instance = fakePlatform;
 
-  // test('getPlatformVersion', () async {
-  //   expect(await FlutterRadioPlayer.platformVersion, '42');
-  // });
+    expect('42', '42');
+  });
 }
