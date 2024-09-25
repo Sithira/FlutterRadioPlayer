@@ -67,3 +67,10 @@ Fixed bugs, reorganized code and improved documentation.
 # 2.0.3
 
 * Bugfixes for Android 14+
+
+# 3.0.0
+
+* Completely Rewritten from scratch with backward compatibility in-mind
+* Now supports album arts in both iOS and Android platforms
+* Better support for platform native companion playbacks like watchOS, wearOS, CarPlay and Android Auto
+* Multiple bugfixes and enhancements from previous versions

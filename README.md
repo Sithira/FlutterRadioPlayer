@@ -1,121 +1,110 @@
 ![logo](flutter_radio_player_logo.png)
 
-# flutter_radio_player
+# Flutter Radio Player
 
 ![Pub Version](https://img.shields.io/pub/v/flutter_radio_player?style=plastic)
 ![Pub Likes](https://img.shields.io/pub/likes/flutter_radio_player)
 ![Pub Points](https://img.shields.io/pub/points/flutter_radio_player)
 ![Pub Popularity](https://img.shields.io/pub/popularity/flutter_radio_player)
 
-The only player if you need to play one streaming URL at a time. Flutter Radio Player supports playing a single source
-precisely. By default, plugin supports background music playing by default. No additional configurations needed.
-Flutter radio player effortlessly integrates with platform native media controls enabling lock screen controling
-of the playing media as well <strong>integrates with iOS watchOS, CarPlay and Android's WearOS, Android Auto without any
-configuration </strong>
-all with the help of Flutter Radio Player's native platform integrations.
+**Flutter Radio Player** is the go-to plugin for playing a single streaming URL effortlessly. With support for background music playback right out of the box, it offers seamless integration with platform-native media controls. Whether it's lock screen media controls or deeper integrations like watchOS, CarPlay, WearOS, or Android Auto, Flutter Radio Player handles it all with no extra configuration needed.
 
 ## Features
 
-* Supports background playing with zero configurations out of the box
-* Integrates with platform native watch interfaces like WatchOs and WearOs
-* Integrates well with platform native AutoMotive infotainment system such as Apple CarPlay and Android Auto
-* Reactive by default
-* Extracts Icy / Meta data from streams (if available)
+- **Background Playback**: Plays audio in the background without any configuration.
+- **Watch Integration**: Seamlessly integrates with WatchOS and WearOS for native watch control.
+- **Automotive Systems**: Supports infotainment systems like Apple CarPlay and Android Auto.
+- **Reactive by Default**: Automatically reacts to stream changes.
+- **ICY/Metadata Extraction**: Extracts stream metadata if available.
 
-### Getting Started with Flutter Radio Player
+## Getting Started
 
-1. Install the player
+### 1. Install the Player
 
 ```bash
 flutter pub add flutter_radio_player
 ```
 
-2. Import the library
+### 2. Import the Library
 
 ```dart
 import 'package:flutter_radio_player/flutter_radio_player.dart';
 ```
 
-3. Configuring the player
+### 3. Configure the Player
 
-```
-    final _flutterRadioPlayerPlugin = FlutterRadioPlayer(); // create an instance of the player
-    _flutterRadioPlayerPlugin.initialize(
-      [
-            {
-                "url": "https://s2-webradio.antenne.de/chillout?icy=https",
-            },
-            {
-                "title": "SunFM - Sri Lanka",
-                "artwork": "images/sample-cover.jpg", // needs be bundled with the app
-                "url":
-                "https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https",
-            },
-            {
-                "url": "http://stream.riverradio.com:8000/wcvofm.aac"
-            }
-      ],
-      true, // auto play on load
-    );
+```dart
+final _flutterRadioPlayerPlugin = FlutterRadioPlayer(); // Create an instance of the player
+_flutterRadioPlayerPlugin.initialize(
+  [
+    {"url": "https://s2-webradio.antenne.de/chillout?icy=https"},
+    {
+      "title": "SunFM - Sri Lanka",
+      "artwork": "images/sample-cover.jpg", // Image needs to be bundled with the app
+      "url": "https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https",
+    },
+    {"url": "http://stream.riverradio.com:8000/wcvofm.aac"}
+  ],
+  true, // Auto play on load
+);
 ```
 
-once you have the basic player setup you are ready to stream music
+Once configured, your player is ready to stream music.
 
-### Manipulating the player
+### Manipulating the Player
 
-To manipulate the player, you have below methods available
+You can control the player using the following methods:
 
-#### Available methods list
+| Method                 | Action                                                     |
+|------------------------|------------------------------------------------------------|
+| `play()`               | Plays the audio from the current source                    |
+| `pause()`              | Pauses the audio                                           |
+| `playOrPause()`        | Toggles play/pause                                         |
+| `changeVolume()`       | Adjusts the volume                                         |
+| `getVolume()`          | Retrieves the current volume                               |
+| `nextSource()`         | Skips to the next source in the list (if available)        |
+| `previousSource()`     | Goes to the previous source                                |
+| `jumpToSourceIndex()`  | Jumps to a specific index in the sources list              |
 
-| Method                 | Action                                                      |
-|------------------------|-------------------------------------------------------------|
-| play()                 | Plays the audio item in the queue                           |
-| pause()                | Pauses the audio                                            |
-| playOrPause()          | Toggle the player playback                                  |
-| changeVolume()         | Change the volume in the player instance                    |
-| getVolume()            | Get the current volume                                      |
-| nextSource()           | Advance to the next audio source in the list (if available) |
-| previousSource()       | Previous audio source                                       |
-| jumpToSourceIndex(int) | Jumps to the provided index from the sources array          |
+### Available Streams
 
-#### Available streams list
+You can also listen to various streams:
 
-| Method                         | Returns                             | Action                                               |
-|--------------------------------|-------------------------------------|------------------------------------------------------|
-| getIsPlayingStream()           | stream of boolean                   | Returns the playback status as stream                |
-| getNowPlayingStream()          | stream NowPlayingDataChanged Object | Return the now playing source ICY or Meta track name |
-| getDeviceVolumeChangedStream() | stream of float                     | Device audio level stepper values                    |
+| Stream                           | Returns                             | Description                                          |
+|-----------------------------------|-------------------------------------|------------------------------------------------------|
+| `getIsPlayingStream()`            | `Stream<bool>`                      | Emits playback status                                |
+| `getNowPlayingStream()`           | `Stream<NowPlayingDataChanged>`      | Emits metadata such as track name                    |
+| `getDeviceVolumeChangedStream()`  | `Stream<double>`                    | Emits device audio level updates                     |
 
-### Platform Configurations
+## Platform Configuration
 
-- iOS
-  For iOS, You have to enable background capabilities like shown in the below image
-  ![xcode image](enabling-xcode-bg-service.png)
+### iOS
 
+To enable background playback, configure background capabilities in Xcode as shown below:
 
-- Android
-  For newer android, add below permissions to play audio in background in `AndroidManifest.xml`. This is already added
-  to library
-  ```xml
-      <uses-permission android:name="android.permission.INTERNET" />
-      <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-      <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-  ```
+![Xcode Configuration](enabling-xcode-bg-service.png)
 
-**Be sure to check out the [Flutter Radio Player Example](/example) to get an idea of how to use action methods and
-streams to create a simple yet powerful player**
+### Android
 
-## Support this plugin
+For Android, ensure the following permissions are added to your `AndroidManifest.xml`:
 
-Please hit a like to plugin on pub if you used it and love it. put a ⭐️ my
-GitHub [repo](https://github.com/Sithira/FlutterRadioPlayer) and show me some ♥️ so i can keep working on this.
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+```
 
-and last but not least, ONLY if you think this was worth it and saved you time here is my USDT-TR20 address so you can
-buy me a coffee ☕️
+> These permissions are already included in the library.
 
-``
-TNuTkL1ZJGu2xntmtzHzSiH5YdVqUeAujr
-``
+**Check out the [Flutter Radio Player Example](/example)** to see how to implement action methods and streams in your player.
 
-**ENJOY THE PLUGIN** <br />
+## Support the Plugin
+
+If you find this plugin useful, show your support by:
+
+- Giving it a ⭐️ on [GitHub](https://github.com/Sithira/FlutterRadioPlayer)
+- Leaving a like on Pub
+- Showing some ♥️ and buying me a coffee via USDT-TR20 at this address: `TNuTkL1ZJGu2xntmtzHzSiH5YdVqUeAujr`
+
+**Enjoy the plugin!**  
 Sithira ✌️
