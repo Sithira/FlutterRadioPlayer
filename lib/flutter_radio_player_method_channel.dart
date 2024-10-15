@@ -72,7 +72,7 @@ class MethodChannelFlutterRadioPlayer extends FlutterRadioPlayerPlatform {
 
   @override
   Future<void> jumpToSourceIndex(int index) async {
-    await methodChannel.invokeMethod("jumpToItem", {"index": index});
+    await methodChannel.invokeMethod("sourceAtIndex", {"index": index});
   }
 
   @override

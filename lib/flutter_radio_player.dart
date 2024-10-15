@@ -31,6 +31,10 @@ class FlutterRadioPlayer {
     return FlutterRadioPlayerPlatform.instance.previousSource();
   }
 
+  Future<void> jumpToSourceIndex(int index) {
+    return FlutterRadioPlayerPlatform.instance.jumpToSourceIndex(index);
+  }
+
   Stream<bool> getPlaybackStream() =>
       FlutterRadioPlayerPlatform.instance.getIsPlayingStream();
 

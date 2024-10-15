@@ -1,51 +1,25 @@
-## 0.0.1
+# 3.0.1
 
-* Initial Release release of FlutterRadioPlayer
+* Added missing method `jumpToSourceIndex(index)`
 
-# 1.0.0
+# 3.0.0
 
-* Updated Read me.
+* Completely Rewritten from scratch with backward compatibility in-mind
+* Now supports album arts in both iOS and Android platforms
+* Better support for platform native companion playbacks like watchOS, wearOS, CarPlay, and Android Auto
+* Multiple bugfixes and enhancements from previous versions
 
-# 1.0.1
+# 2.0.3
 
-* Fixed pubpec
+* Bugfixes for Android 14+
 
-# 1.0.2
+# 2.0.2
 
-* Fixed pubpec
+* Fixed compiling error.
 
-# 1.0.3
+# 2.0.1
 
-* Fixed pubpec
-
-# 1.0.4
-
-Fixed bugs and slightly improved documentation.
-
-* Fixed an issue where player failed to bind to the application context.
-* Fixed an issue with EventSink.
-* Fixed a typo in the pubspec
-
-# 1.0.5
-
-Fixed bugs, reorganized code and improved documentation.
-
-* Added setUrl method to dynamically change the playing URL.
-* Improved documentation.
-
-# 1.0.6
-
-* Fixed media meta-data bug and dynamic URL changing issue.
-
-# 1.0.7
-
-* Fixed media meta-data on iOS
-
-# 1.1.0
-
-* Updated to NULL-SAFETY
-* Updated exo-player version
-* Bug fixes and improvments
+* Updated for better rating
 
 # 2.0.0
 
@@ -56,21 +30,51 @@ Fixed bugs, reorganized code and improved documentation.
 * Better native control support
 * New methods to control the player better
 
-# 2.0.1
+# 1.1.0
 
-* Updated for better rating
+* Updated to NULL-SAFETY
+* Updated exo-player version
+* Bug fixes and improvements
 
-# 2.0.2
+# 1.0.7
 
-* Fixed compiling error.
+* Fixed media meta-data on iOS
 
-# 2.0.3
+# 1.0.6
 
-* Bugfixes for Android 14+
+* Fixed media meta-data bug and dynamic URL changing issue.
 
-# 3.0.0
+# 1.0.5
 
-* Completely Rewritten from scratch with backward compatibility in-mind
-* Now supports album arts in both iOS and Android platforms
-* Better support for platform native companion playbacks like watchOS, wearOS, CarPlay and Android Auto
-* Multiple bugfixes and enhancements from previous versions
+Fixed bugs, reorganized code and improved documentation.
+
+* Added setUrl method to dynamically change the playing URL.
+* Improved documentation.
+
+# 1.0.4
+
+Fixed bugs and slightly improved documentation.
+
+* Fixed an issue where player failed to bind to the application context.
+* Fixed an issue with EventSink.
+* Fixed a typo in the pubspec
+
+# 1.0.3
+
+* Fixed pubpec
+
+# 1.0.2
+
+* Fixed pubpec
+
+# 1.0.1
+
+* Fixed pubpec
+
+# 1.0.0
+
+* Updated Read me.
+
+# 0.0.1
+
+* Initial Release of FlutterRadioPlayer
