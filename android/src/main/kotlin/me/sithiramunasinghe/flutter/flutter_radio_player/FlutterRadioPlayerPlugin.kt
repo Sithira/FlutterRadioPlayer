@@ -110,7 +110,8 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler
                         if (it.title.isNullOrEmpty()) {
                             mediaMeta.setArtist(getAppName())
                         } else {
-                            mediaMeta.setArtist(it.title)
+                            mediaMeta.setTitle(it.title)
+                            mediaMeta.setArtist(getAppName())
                         }
                         if (!it.artwork.isNullOrEmpty()) {
                             if ((it.artwork!!.contains("http") || it.artwork!!.contains("https"))) {
