@@ -1,3 +1,7 @@
+# 3.0.2
+
+* Added foreground title when title was provided along with artist title
+
 # 3.0.1
 
 * Added missing method `jumpToSourceIndex(index)`
