@@ -5,9 +5,17 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.*
+import android.os.Binder
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
 import android.support.v4.media.session.MediaSessionCompat
-import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.C
+import com.google.android.exoplayer2.DefaultLivePlaybackSpeedControl
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.MediaMetadata
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.source.MediaSource
@@ -51,9 +59,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     var mediaSourceList: List<FRPAudioSource> = emptyList()
     var useICYData: Boolean = false
     private var currentPlayingItem: FRPCurrentSource? = null
-
-    private var handler: Handler = Handler(Looper.getMainLooper())
-
     private val binder = LocalBinder()
     private var exoPlayer: ExoPlayer? = null
     private val eventBus: EventBus = EventBus.getDefault()
@@ -62,28 +67,42 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
     private lateinit var mediaSession: MediaSessionCompat
 
+    override fun onCreate() {
+        Log.i(TAG, "FlutterRadioPlayerService::onCreate")
+    }
+
     override fun onDestroy() {
 
         Log.i(TAG, "::: onDestroy :::")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            mediaSession.release()
+        mediaSessionConnector?.setPlayer(null)
+        playerNotificationManager?.setPlayer(null)
+
+        if (exoPlayer != null) {
+            exoPlayer?.release()
+            exoPlayer == null
         }
 
-        exoPlayer?.release()
-        exoPlayer = null
+        if (mediaSessionConnector != null) {
+            mediaSessionConnector = null
+        }
+        mediaSession.setActive(false)
+        mediaSession.release()
+        super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.i(TAG, ":::: FlutterRadioPlayerService.onTaskRemoved ::::")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
             stopForeground(false)
         }
-        mediaSessionConnector?.setPlayer(null)
-        playerNotificationManager?.setPlayer(null)
-
-        super.onDestroy()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         Log.i(TAG, ":::: FlutterRadioPlayerService.onStartCommand ::::")
 
@@ -100,12 +119,41 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         mediaSession = MediaSessionCompat(this, mediaSessionId)
         mediaSession.isActive = true
 
+        val handler = Handler(Looper.getMainLooper())
+
+        // build exoplayer
+        exoPlayer = ExoPlayer.Builder(context)
+            .setLooper(handler.looper)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(), true
+            )
+            .setLivePlaybackSpeedControl(
+                DefaultLivePlaybackSpeedControl.Builder()
+                    .setFallbackMaxPlaybackSpeed(1.04f)
+                    .build()
+            )
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+
+        // exoplayer configuration
+        exoPlayer?.let {
+            it.addListener(FRPPlayerListener(this, exoPlayer, playerNotificationManager, eventBus))
+            it.playWhenReady = false
+        }
+
+        exoPlayer?.addAnalyticsListener(EventLogger())
+
+
         // set connector and player
         mediaSessionConnector = MediaSessionConnector(mediaSession)
+        mediaSessionConnector?.setPlayer(exoPlayer)
 
         playerNotificationManager?.apply {
 
-            Log.i(TAG, ":::: Applying configurations... ::::")
+            Log.i(TAG, "Applying configurations...")
 
             // default buttons
             // TODO allow developer to choose actions on player init instead of hardcoding them here
@@ -126,6 +174,7 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             setUseFastForwardActionInCompactView(false)
             setUseRewindActionInCompactView(false)
 
+            setPlayer(exoPlayer)
             setMediaSessionToken(mediaSession.sessionToken)
         }
 
@@ -138,47 +187,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
         if (sourceList.isEmpty()) {
             throw FRPException("Empty media sources")
-        }
-
-        // TODO maybe find a better init location where the player will always be initialized correctly (onCreate wasn't called always)
-        // build exoplayer
-        if (exoPlayer == null) {
-            exoPlayer = ExoPlayer.Builder(context)
-                .setLooper(handler.looper)
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .build(), true
-                )
-                .setLivePlaybackSpeedControl(
-                    DefaultLivePlaybackSpeedControl.Builder()
-                        .setFallbackMaxPlaybackSpeed(1.04f)
-                        .build()
-                )
-                .setRenderersFactory(
-                    DefaultRenderersFactory(context)
-                        .forceEnableMediaCodecAsynchronousQueueing()
-                )
-                .setHandleAudioBecomingNoisy(true)
-                .build()
-
-            // exoplayer configuration
-            exoPlayer?.let {
-                it.addListener(
-                    FRPPlayerListener(
-                        this,
-                        exoPlayer,
-                        playerNotificationManager,
-                        eventBus
-                    )
-                )
-                it.playWhenReady = false
-            }
-
-            exoPlayer?.addAnalyticsListener(EventLogger())
-            mediaSessionConnector?.setPlayer(exoPlayer)
-            playerNotificationManager?.setPlayer(exoPlayer)
         }
 
         this.mediaSourceList = sourceList.sortedByDescending { it.isPrimary }
@@ -260,11 +268,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     }
 
     fun pause() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_DETACH)
-        } else {
-            stopForeground(false)
-        }
         exoPlayer?.pause()
     }
 

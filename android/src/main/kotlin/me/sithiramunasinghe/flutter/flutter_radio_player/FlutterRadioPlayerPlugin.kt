@@ -33,8 +33,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         private val GSON = Gson()
     }
 
-    var serviceIntent: Intent? = null
-
     private var isBound: Boolean = false
     private var context: Context? = null
     private var pluginActivity: Activity? = null
@@ -56,7 +54,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         frpChannel?.setMethodCallHandler(null)
         frpChannel = null
         eventSink = null
-        serviceIntent = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -82,7 +79,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
     }
 
     private fun onAttachedToEngine(context: Context, binaryMessenger: BinaryMessenger) {
-        Log.i(TAG, "::: Attaching to FRP to FlutterEngine :::")
+        Log.i(TAG, "::: Attaching FRP to FlutterEngine :::")
         this.context = context
         frpChannel = MethodChannel(binaryMessenger, METHOD_CHANNEL_NAME)
 
@@ -99,7 +96,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, MethodChannel.Met
         })
 
         // service intent
-        serviceIntent = Intent(context, FRPCoreService::class.java)
+        val serviceIntent = Intent(context, FRPCoreService::class.java)
 
         // start the background service.
         pluginActivity?.startService(serviceIntent)
