@@ -69,6 +69,10 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
 
     override fun onCreate() {
         Log.i(TAG, "FlutterRadioPlayerService::onCreate")
+
+        // media session
+        mediaSession = MediaSessionCompat(this, mediaSessionId)
+        mediaSession.isActive = true
     }
 
     override fun onDestroy() {
@@ -78,16 +82,14 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         mediaSessionConnector?.setPlayer(null)
         playerNotificationManager?.setPlayer(null)
 
-        if (exoPlayer != null) {
-            exoPlayer?.release()
-            exoPlayer == null
-        }
+        exoPlayer?.release()
+        exoPlayer == null
 
-        if (mediaSessionConnector != null) {
-            mediaSessionConnector = null
-        }
+        mediaSessionConnector = null
+
         mediaSession.setActive(false)
         mediaSession.release()
+
         super.onDestroy()
     }
 
@@ -114,10 +116,6 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
                 .setMediaDescriptionAdapter(FRPMediaDescriptionAdapter(this))
                 .setNotificationListener(FRPPlayerNotificationListener(this))
                 .build()
-
-        // media session
-        mediaSession = MediaSessionCompat(this, mediaSessionId)
-        mediaSession.isActive = true
 
         val handler = Handler(Looper.getMainLooper())
 
