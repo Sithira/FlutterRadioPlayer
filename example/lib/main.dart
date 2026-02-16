@@ -36,9 +36,17 @@ class _MyAppState extends State<MyApp> {
     ],
   );
 
+  AppLifecycleListener? appLifecycleListener;
+
   @override
   void initState() {
     super.initState();
+    appLifecycleListener = AppLifecycleListener(
+      onDetach: () {
+        debugPrint("App detached");
+        _flutterRadioPlayer.stop();
+      },
+    );
     _flutterRadioPlayer.initPlayer();
     _flutterRadioPlayer.addMediaSources(frpSource);
   }

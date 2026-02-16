@@ -61,23 +61,35 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
     private var currentPlayingItem: FRPCurrentSource? = null
     private val binder = LocalBinder()
     private var exoPlayer: ExoPlayer? = null
+    private var playerListener: FRPPlayerListener? = null
     private val eventBus: EventBus = EventBus.getDefault()
     private var mediaSessionConnector: MediaSessionConnector? = null
     private var playerNotificationManager: PlayerNotificationManager? = null
 
-    private lateinit var mediaSession: MediaSessionCompat
+    private var mediaSession: MediaSessionCompat? = null
 
     override fun onCreate() {
         Log.i(TAG, "FlutterRadioPlayerService::onCreate")
 
         // media session
         mediaSession = MediaSessionCompat(this, mediaSessionId)
-        mediaSession.isActive = true
+        mediaSession?.isActive = true
     }
 
     override fun onDestroy() {
 
         Log.i(TAG, "::: onDestroy :::")
+        releaseResources()
+        super.onDestroy()
+    }
+
+    private fun releaseResources() {
+        Log.i(TAG, ":::: Releasing resources ::::")
+        if (playerListener != null) {
+            exoPlayer?.removeListener(playerListener!!)
+        }
+
+        mediaSession?.release()
 
         mediaSessionConnector?.setPlayer(null)
         playerNotificationManager?.setPlayer(null)
@@ -86,15 +98,11 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         exoPlayer == null
 
         mediaSessionConnector = null
-
-        mediaSession.setActive(false)
-        mediaSession.release()
-
-        super.onDestroy()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.i(TAG, ":::: FlutterRadioPlayerService.onTaskRemoved ::::")
+        releaseResources()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -136,18 +144,27 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             .setHandleAudioBecomingNoisy(true)
             .build()
 
+        val listener = FRPPlayerListener(this, exoPlayer, playerNotificationManager, eventBus)
+        playerListener = listener
         // exoplayer configuration
         exoPlayer?.let {
-            it.addListener(FRPPlayerListener(this, exoPlayer, playerNotificationManager, eventBus))
+            it.addListener(listener)
             it.playWhenReady = false
         }
 
         exoPlayer?.addAnalyticsListener(EventLogger())
 
+        if (mediaSession == null) {
+            mediaSession = MediaSessionCompat(this, mediaSessionId)
+            mediaSession?.isActive = true
+        }
 
-        // set connector and player
-        mediaSessionConnector = MediaSessionConnector(mediaSession)
-        mediaSessionConnector?.setPlayer(exoPlayer)
+        if (mediaSession != null) {
+            val session: MediaSessionCompat = mediaSession!!
+            // set connector and player
+            mediaSessionConnector = MediaSessionConnector(session)
+            mediaSessionConnector?.setPlayer(exoPlayer)
+        }
 
         playerNotificationManager?.apply {
 
@@ -173,7 +190,9 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
             setUseRewindActionInCompactView(false)
 
             setPlayer(exoPlayer)
-            setMediaSessionToken(mediaSession.sessionToken)
+            if (mediaSession != null) {
+                setMediaSessionToken(mediaSession!!.sessionToken)
+            }
         }
 
         Log.i(TAG, ":::: END OF onStartCommand IN SERVICE ::::")
@@ -349,8 +368,10 @@ class FRPCoreService : Service(), PlayerNotificationManager.NotificationListener
         return when (val type = Util.inferContentType(mediaUrl)) {
             C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(defaultDataSource)
                 .createMediaSource(mediaItem)
+
             C.CONTENT_TYPE_OTHER -> ProgressiveMediaSource.Factory(defaultDataSource)
                 .createMediaSource(mediaItem)
+
             else -> {
                 throw FRPException("Unsupported type: $type")
             }
