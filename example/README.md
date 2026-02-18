@@ -1,16 +1,23 @@
-# flutter_radio_player_example
+# Flutter Radio Player - Example
 
-Demonstrates how to use the flutter_radio_player plugin.
+A demo app showcasing the [flutter_radio_player](https://pub.dev/packages/flutter_radio_player) plugin with multiple radio stations, playback controls, and volume management.
 
-## Getting Started
+<p align="center">
+  <img src="../example_player.png" alt="Example Player" width="300" />
+</p>
 
-This project is a starting point for a Flutter application.
+## Running
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+cd example
+flutter pub get
+flutter run
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Features Demonstrated
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Initializing the player with multiple radio sources
+- Play, pause, next, and previous controls
+- Volume slider with real-time updates
+- ICY/stream metadata display
+- Station list with active station indicator

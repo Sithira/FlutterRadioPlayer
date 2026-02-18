@@ -176,7 +176,9 @@ const VolumeInfo({required double volume, required bool isMuted});
 
 ## Example
 
-![Example Player](example_player.png)
+<p align="center">
+  <img src="example_player.png" alt="Example Player" width="300" />
+</p>
 
 See the [example app](example/) for a complete implementation.
 
