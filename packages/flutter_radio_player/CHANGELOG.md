@@ -1,3 +1,8 @@
+# 4.0.1
+
+* Added dartdoc comments to all public API elements
+* Added example app for pub.dev scoring
+
 # 4.0.0
 
 * **BREAKING**: Full rewrite with federated plugin architecture (monorepo)

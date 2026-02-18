@@ -65,23 +65,26 @@ packages:
   flutter_radio_player_android:
     dependency: "direct main"
     description:
-      path: "../flutter_radio_player_android"
-      relative: true
-    source: path
+      name: flutter_radio_player_android
+      sha256: "42cde1e85e79450ab40312ee7e91ee029539b54869751463b5facef93b1926c5"
+      url: "https://pub.dev"
+    source: hosted
     version: "4.0.0"
   flutter_radio_player_ios:
     dependency: "direct main"
     description:
-      path: "../flutter_radio_player_ios"
-      relative: true
-    source: path
+      name: flutter_radio_player_ios
+      sha256: "8857d812eee67ef1d4756023a485786afe076308a32ad0fd4fa7d520daf26019"
+      url: "https://pub.dev"
+    source: hosted
     version: "4.0.0"
   flutter_radio_player_platform_interface:
     dependency: "direct main"
     description:
-      path: "../flutter_radio_player_platform_interface"
-      relative: true
-    source: path
+      name: flutter_radio_player_platform_interface
+      sha256: "5a9c5688af537157333c85fb42433a5fcaca4d2c7df3d313760910128760af21"
+      url: "https://pub.dev"
+    source: hosted
     version: "4.0.0"
   flutter_test:
     dependency: "direct dev"

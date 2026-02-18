@@ -1,3 +1,8 @@
+# 4.0.1
+
+* Added dartdoc comments to all public API elements across app-facing and platform interface packages
+* Added example app (`packages/flutter_radio_player/example/`) for pub.dev scoring
+
 # 4.0.0
 
 * **BREAKING**: Full rewrite with federated plugin architecture (monorepo)
