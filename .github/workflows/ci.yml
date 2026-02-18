@@ -1,0 +1,25 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - packages/flutter_radio_player
+          - packages/flutter_radio_player_platform_interface
+          - packages/flutter_radio_player_android
+          - packages/flutter_radio_player_ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: ${{ matrix.package }}
+      - run: flutter analyze --no-fatal-warnings
+        working-directory: ${{ matrix.package }}
+      - run: flutter test
+        working-directory: ${{ matrix.package }}

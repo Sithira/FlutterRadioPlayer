@@ -1,3 +1,20 @@
+# 4.0.0
+
+* **BREAKING**: Full rewrite with federated plugin architecture (monorepo)
+* **BREAKING**: Replaced `List<Map<String, String>>` with typed `RadioSource` model
+* **BREAKING**: Renamed stream getters (`getPlaybackStream()` → `isPlayingStream`, etc.)
+* **BREAKING**: Renamed `prevSource()` → `previousSource()`
+* **BREAKING**: `getVolume()` now returns `Future<double>` (non-nullable)
+* Added Pigeon for type-safe platform channels (replaces manual method/event channels)
+* iOS: Replaced SwiftAudioEx with direct AVFoundation (no third-party deps)
+* iOS: Raised minimum deployment target to 14.0
+* iOS: Implemented `playOrPause()` (was missing)
+* iOS: Added artwork URL support (was asset-only)
+* iOS: Fixed volume event double-emission bug
+* Added `dispose()` method on both platforms
+* Added CI/CD via GitHub Actions
+* Removed kotlinx-serialization dependency on Android
+
 # 3.0.2
 
 * Added foreground title when title was provided along with artist title

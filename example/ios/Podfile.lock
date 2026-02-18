@@ -1,35 +1,28 @@
 PODS:
   - Flutter (1.0.0)
-  - flutter_radio_player (0.0.1):
+  - flutter_radio_player_ios (4.0.0):
     - Flutter
-    - SwiftAudioEx (~> 1.1.0)
   - integration_test (0.0.1):
     - Flutter
-  - SwiftAudioEx (1.1.0)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
-  - flutter_radio_player (from `.symlinks/plugins/flutter_radio_player/ios`)
+  - flutter_radio_player_ios (from `.symlinks/plugins/flutter_radio_player_ios/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-
-SPEC REPOS:
-  trunk:
-    - SwiftAudioEx
 
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
-  flutter_radio_player:
-    :path: ".symlinks/plugins/flutter_radio_player/ios"
+  flutter_radio_player_ios:
+    :path: ".symlinks/plugins/flutter_radio_player_ios/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  flutter_radio_player: 2c531f0e2b9e636d6cf09704eb63ad040e3913ff
-  integration_test: ce0a3ffa1de96d1a89ca0ac26fca7ea18a749ef4
-  SwiftAudioEx: f6aa653770f3a0d3851edaf8d834a30aee4a7646
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_radio_player_ios: 1adff5797c9c49896c5946d439b757cae7c507e2
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
 
-PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
+PODFILE CHECKSUM: ec8b70a489dd1f81e53ef185cf7ad30fce8f8d00
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2

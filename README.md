@@ -2,91 +2,91 @@
 
 # Flutter Radio Player
 
-![Pub Version](https://img.shields.io/pub/v/flutter_radio_player?style=plastic)
-![Pub Likes](https://img.shields.io/pub/likes/flutter_radio_player)
-![Pub Points](https://img.shields.io/pub/points/flutter_radio_player)
-![Pub Popularity](https://img.shields.io/pub/popularity/flutter_radio_player)
+[![Pub Version](https://img.shields.io/pub/v/flutter_radio_player)](https://pub.dev/packages/flutter_radio_player)
+[![Pub Likes](https://img.shields.io/pub/likes/flutter_radio_player)](https://pub.dev/packages/flutter_radio_player)
+[![Pub Points](https://img.shields.io/pub/points/flutter_radio_player)](https://pub.dev/packages/flutter_radio_player)
+[![CI](https://github.com/Sithira/FlutterRadioPlayer/actions/workflows/ci.yml/badge.svg)](https://github.com/Sithira/FlutterRadioPlayer/actions/workflows/ci.yml)
 
-**Flutter Radio Player** is the go-to plugin for playing a single streaming URL effortlessly. With support for background music playback right out of the box, it offers seamless integration with platform-native media controls. Whether it's lock screen media controls or deeper integrations like watchOS, CarPlay, WearOS, or Android Auto, Flutter Radio Player handles it all with no extra configuration needed.
+A Flutter plugin for playing streaming radio URLs with background playback, lock screen controls, and platform-native media integrations including watchOS, WearOS, CarPlay, and Android Auto.
+
+|             | Android | iOS     |
+|-------------|---------|---------|
+| **Support** | SDK 21+ | iOS 14+ |
 
 ## Features
 
-- **Background Playback**: Plays audio in the background without any configuration.
-- **Watch Integration**: Seamlessly integrates with WatchOS and WearOS for native watch control.
-- **Automotive Systems**: Supports infotainment systems like Apple CarPlay and Android Auto.
-- **Reactive by Default**: Automatically reacts to stream changes.
-- **ICY/Metadata Extraction**: Extracts stream metadata if available.
+- Background audio playback with no extra configuration
+- Lock screen and notification media controls
+- ICY/stream metadata extraction
+- Multiple source queue with next/previous/jump-to navigation
+- Volume control with stream updates
+- watchOS, WearOS, CarPlay, and Android Auto integration
 
 ## Getting Started
 
-### 1. Install the Player
+### Installation
 
 ```bash
 flutter pub add flutter_radio_player
 ```
 
-### 2. Import the Library
+### Usage
 
 ```dart
 import 'package:flutter_radio_player/flutter_radio_player.dart';
-```
 
-### 3. Configure the Player
+final player = FlutterRadioPlayer();
 
-```dart
-final _flutterRadioPlayerPlugin = FlutterRadioPlayer(); // Create an instance of the player
-_flutterRadioPlayerPlugin.initialize(
+// Initialize with sources
+await player.initialize(
   [
-    {"url": "https://s2-webradio.antenne.de/chillout?icy=https"},
-    {
-      "title": "SunFM - Sri Lanka",
-      "artwork": "images/sample-cover.jpg", // Image needs to be bundled with the app
-      "url": "https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https",
-    },
-    {"url": "http://stream.riverradio.com:8000/wcvofm.aac"}
+    const RadioSource(url: 'https://s2-webradio.antenne.de/chillout?icy=https'),
+    const RadioSource(
+      url: 'https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https',
+      title: 'SunFM - Sri Lanka',
+      artwork: 'images/sample-cover.jpg', // bundled asset
+    ),
+    const RadioSource(url: 'http://stream.riverradio.com:8000/wcvofm.aac'),
   ],
-  true, // Auto play on load
+  playWhenReady: true,
 );
 ```
 
-Once configured, your player is ready to stream music.
+### Controlling Playback
 
-### Manipulating the Player
+```dart
+await player.play();
+await player.pause();
+await player.playOrPause();
+await player.nextSource();
+await player.previousSource();
+await player.jumpToSourceAtIndex(1);
+await player.setVolume(0.8);
+final volume = await player.getVolume();
+await player.dispose();
+```
 
-You can control the player using the following methods:
+### Listening to Streams
 
-| Method                 | Action                                                     |
-|------------------------|------------------------------------------------------------|
-| `play()`               | Plays the audio from the current source                    |
-| `pause()`              | Pauses the audio                                           |
-| `playOrPause()`        | Toggles play/pause                                         |
-| `changeVolume()`       | Adjusts the volume                                         |
-| `getVolume()`          | Retrieves the current volume                               |
-| `nextSource()`         | Skips to the next source in the list (if available)        |
-| `previousSource()`     | Goes to the previous source                                |
-| `jumpToSourceIndex()`  | Jumps to a specific index in the sources list              |
+```dart
+player.isPlayingStream.listen((bool isPlaying) {
+  print('Playing: $isPlaying');
+});
 
-### Available Streams
+player.nowPlayingStream.listen((NowPlayingInfo info) {
+  print('Now playing: ${info.title}');
+});
 
-You can also listen to various streams:
+player.volumeStream.listen((VolumeInfo vol) {
+  print('Volume: ${vol.volume}, Muted: ${vol.isMuted}');
+});
+```
 
-| Stream                           | Returns                             | Description                                          |
-|-----------------------------------|-------------------------------------|------------------------------------------------------|
-| `getIsPlayingStream()`            | `Stream<bool>`                      | Emits playback status                                |
-| `getNowPlayingStream()`           | `Stream<NowPlayingDataChanged>`      | Emits metadata such as track name                    |
-| `getDeviceVolumeChangedStream()`  | `Stream<double>`                    | Emits device audio level updates                     |
-
-## Platform Configuration
-
-### iOS
-
-To enable background playback, configure background capabilities in Xcode as shown below:
-
-![Xcode Configuration](enabling-xcode-bg-service.png)
+## Platform Setup
 
 ### Android
 
-For Android, ensure the following permissions are added to your `AndroidManifest.xml`:
+Add the following permissions to your app's `AndroidManifest.xml`:
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
@@ -94,9 +94,91 @@ For Android, ensure the following permissions are added to your `AndroidManifest
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 ```
 
-> These permissions are already included in the library.
+> These permissions are already declared by the plugin. You only need to add them if your app's manifest merger requires it.
 
-**Check out the [Flutter Radio Player Example](/example)** to see how to implement action methods and streams in your player.
+### iOS
+
+Enable **Audio, AirPlay, and Picture in Picture** under your target's **Signing & Capabilities > Background Modes** in Xcode:
+
+![Xcode Configuration](xcode_required_capabilities.png)
+
+If your radio streams use plain HTTP, add the following to your `Info.plist`:
+
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+```
+
+## API Reference
+
+### Methods
+
+| Method                    | Description                            |
+|---------------------------|----------------------------------------|
+| `initialize(sources)`    | Set sources and optionally auto-play   |
+| `play()`                 | Resume playback                        |
+| `pause()`                | Pause playback                         |
+| `playOrPause()`          | Toggle play/pause                      |
+| `setVolume(double)`      | Set volume (0.0 to 1.0)               |
+| `getVolume()`            | Get current volume                     |
+| `nextSource()`           | Skip to next source                    |
+| `previousSource()`       | Skip to previous source                |
+| `jumpToSourceAtIndex(i)` | Jump to source at index                |
+| `dispose()`              | Release player resources               |
+
+### Streams
+
+| Stream              | Type                    | Description                |
+|---------------------|-------------------------|----------------------------|
+| `isPlayingStream`   | `Stream<bool>`          | Playback state changes     |
+| `nowPlayingStream`  | `Stream<NowPlayingInfo>`| Track metadata updates     |
+| `volumeStream`      | `Stream<VolumeInfo>`    | Volume and mute changes    |
+
+### Models
+
+```dart
+const RadioSource({required String url, String? title, String? artwork});
+const NowPlayingInfo({String? title});
+const VolumeInfo({required double volume, required bool isMuted});
+```
+
+## Migration from v3
+
+```diff
+// Sources
+- player.initialize([{"url": "...", "title": "..."}], true);
++ player.initialize([const RadioSource(url: '...', title: '...')], playWhenReady: true);
+
+// Streams
+- player.getPlaybackStream()
++ player.isPlayingStream
+
+- player.getNowPlayingStream()
++ player.nowPlayingStream
+
+- player.getDeviceVolumeChangedStream()
++ player.volumeStream
+
+// Methods
+- player.prevSource()
++ player.previousSource()
+
+- player.setVolume(0.5)     // unchanged
++ player.setVolume(0.5)
+
+// New
++ await player.dispose();
++ await player.playOrPause();  // now works on iOS too
+```
+
+## Example
+
+![Example Player](example_player.png)
+
+See the [example app](example/) for a complete implementation.
 
 ## Support the Plugin
 
@@ -106,5 +188,13 @@ If you find this plugin useful, show your support by:
 - Leaving a like on Pub
 - Showing some ♥️ and buying me a coffee via USDT-TR20 at this address: `TNuTkL1ZJGu2xntmtzHzSiH5YdVqUeAujr`
 
-**Enjoy the plugin!**  
+**Enjoy the plugin!**
 Sithira ✌️
+
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you would like to change.
+
+## License
+
+[MIT](LICENSE)
