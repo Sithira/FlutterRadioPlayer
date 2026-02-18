@@ -2,6 +2,8 @@ name: flutter_radio_player
 description: "Online Radio Player for Flutter with background playback, lock screen controls, and streaming support for Android and iOS."
 version: 4.0.0
 homepage: https://github.com/Sithira/FlutterRadioPlayer
+repository: https://github.com/Sithira/FlutterRadioPlayer
+issue_tracker: https://github.com/Sithira/FlutterRadioPlayer/issues
 
 environment:
   sdk: '>=3.4.3 <4.0.0'
@@ -18,12 +20,9 @@ flutter:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_radio_player_platform_interface:
-    path: ../flutter_radio_player_platform_interface
-  flutter_radio_player_android:
-    path: ../flutter_radio_player_android
-  flutter_radio_player_ios:
-    path: ../flutter_radio_player_ios
+  flutter_radio_player_platform_interface: ^4.0.0
+  flutter_radio_player_android: ^4.0.0
+  flutter_radio_player_ios: ^4.0.0
 
 dev_dependencies:
   flutter_test:

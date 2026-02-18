@@ -2,6 +2,8 @@ name: flutter_radio_player_android
 description: Android implementation of flutter_radio_player.
 version: 4.0.0
 homepage: https://github.com/Sithira/FlutterRadioPlayer
+repository: https://github.com/Sithira/FlutterRadioPlayer
+issue_tracker: https://github.com/Sithira/FlutterRadioPlayer/issues
 
 environment:
   sdk: '>=3.4.3 <4.0.0'
@@ -19,8 +21,7 @@ flutter:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_radio_player_platform_interface:
-    path: ../flutter_radio_player_platform_interface
+  flutter_radio_player_platform_interface: ^4.0.0
 
 dev_dependencies:
   pigeon: ^26.0.0

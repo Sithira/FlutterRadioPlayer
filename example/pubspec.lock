@@ -91,21 +91,21 @@ packages:
     source: path
     version: "4.0.0"
   flutter_radio_player_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/flutter_radio_player_android"
       relative: true
     source: path
     version: "4.0.0"
   flutter_radio_player_ios:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/flutter_radio_player_ios"
       relative: true
     source: path
     version: "4.0.0"
   flutter_radio_player_platform_interface:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../packages/flutter_radio_player_platform_interface"
       relative: true
