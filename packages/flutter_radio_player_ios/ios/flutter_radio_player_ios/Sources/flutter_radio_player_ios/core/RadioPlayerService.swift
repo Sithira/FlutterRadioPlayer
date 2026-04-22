@@ -39,12 +39,26 @@ class RadioPlayerService: NSObject {
         self.sources = sources
         self.currentIndex = 0
 
+        try? AVAudioSession.sharedInstance().setActive(true)
+        reattachObservers()
+
         guard !sources.isEmpty else { return }
 
         loadSource(at: 0)
         if playWhenReady {
             player?.play()
         }
+    }
+
+    private func reattachObservers() {
+        NotificationCenter.default.removeObserver(
+            self, name: AVAudioSession.interruptionNotification, object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self, name: AVAudioSession.routeChangeNotification, object: nil
+        )
+        observeInterruptions()
+        observeRouteChanges()
     }
 
     func play() {
@@ -99,12 +113,27 @@ class RadioPlayerService: NSObject {
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         timeControlStatusObservation?.invalidate()
+        timeControlStatusObservation = nil
         statusObservation?.invalidate()
+        statusObservation = nil
+        metadataOutput = nil
+
+        NotificationCenter.default.removeObserver(
+            self, name: AVAudioSession.interruptionNotification, object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self, name: AVAudioSession.routeChangeNotification, object: nil
+        )
+
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         MPRemoteCommandCenter.shared().playCommand.removeTarget(self)
         MPRemoteCommandCenter.shared().pauseCommand.removeTarget(self)
         MPRemoteCommandCenter.shared().nextTrackCommand.removeTarget(self)
         MPRemoteCommandCenter.shared().previousTrackCommand.removeTarget(self)
+
+        try? AVAudioSession.sharedInstance().setActive(
+            false, options: .notifyOthersOnDeactivation
+        )
     }
 
     // MARK: - Private
@@ -188,11 +217,12 @@ class RadioPlayerService: NSObject {
     private func observePlayerState() {
         timeControlStatusObservation = player?.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             DispatchQueue.main.async {
-                let isPlaying = player.timeControlStatus == .playing
+                let isPlaying = player.timeControlStatus != .paused
                 self?.playbackStateSink?.success(isPlaying)
 
                 var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-                info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+                info[MPNowPlayingInfoPropertyPlaybackRate] =
+                    player.timeControlStatus == .playing ? 1.0 : 0.0
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = info
             }
         }

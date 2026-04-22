@@ -1,3 +1,9 @@
+# 4.1.0
+
+* Platform calls are now backed by Pigeon `@async`: returned `Future`s complete
+  only after the underlying operation actually runs, instead of completing
+  synchronously while work was silently buffered. Public Dart API is unchanged.
+
 # 4.0.2
 
 * Added Swift Package Manager support for iOS

@@ -263,18 +263,19 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 
 var messagesPigeonMethodCodec = FlutterStandardMethodCodec(readerWriter: MessagesPigeonCodecReaderWriter());
 
+
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol RadioPlayerHostApi {
-  func initialize(sources: [RadioSourceMessage], playWhenReady: Bool) throws
-  func play() throws
-  func pause() throws
-  func playOrPause() throws
-  func setVolume(volume: Double) throws
-  func getVolume() throws -> Double
-  func nextSource() throws
-  func previousSource() throws
-  func jumpToSourceAtIndex(index: Int64) throws
-  func dispose() throws
+  func initialize(sources: [RadioSourceMessage], playWhenReady: Bool, completion: @escaping (Result<Void, Error>) -> Void)
+  func play(completion: @escaping (Result<Void, Error>) -> Void)
+  func pause(completion: @escaping (Result<Void, Error>) -> Void)
+  func playOrPause(completion: @escaping (Result<Void, Error>) -> Void)
+  func setVolume(volume: Double, completion: @escaping (Result<Void, Error>) -> Void)
+  func getVolume(completion: @escaping (Result<Double, Error>) -> Void)
+  func nextSource(completion: @escaping (Result<Void, Error>) -> Void)
+  func previousSource(completion: @escaping (Result<Void, Error>) -> Void)
+  func jumpToSourceAtIndex(index: Int64, completion: @escaping (Result<Void, Error>) -> Void)
+  func dispose(completion: @escaping (Result<Void, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -289,11 +290,13 @@ class RadioPlayerHostApiSetup {
         let args = message as! [Any?]
         let sourcesArg = args[0] as! [RadioSourceMessage]
         let playWhenReadyArg = args[1] as! Bool
-        do {
-          try api.initialize(sources: sourcesArg, playWhenReady: playWhenReadyArg)
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.initialize(sources: sourcesArg, playWhenReady: playWhenReadyArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -302,11 +305,13 @@ class RadioPlayerHostApiSetup {
     let playChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.play\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       playChannel.setMessageHandler { _, reply in
-        do {
-          try api.play()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.play { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -315,11 +320,13 @@ class RadioPlayerHostApiSetup {
     let pauseChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.pause\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       pauseChannel.setMessageHandler { _, reply in
-        do {
-          try api.pause()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.pause { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -328,11 +335,13 @@ class RadioPlayerHostApiSetup {
     let playOrPauseChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.playOrPause\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       playOrPauseChannel.setMessageHandler { _, reply in
-        do {
-          try api.playOrPause()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.playOrPause { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -343,11 +352,13 @@ class RadioPlayerHostApiSetup {
       setVolumeChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
         let volumeArg = args[0] as! Double
-        do {
-          try api.setVolume(volume: volumeArg)
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.setVolume(volume: volumeArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -356,11 +367,13 @@ class RadioPlayerHostApiSetup {
     let getVolumeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getVolume\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       getVolumeChannel.setMessageHandler { _, reply in
-        do {
-          let result = try api.getVolume()
-          reply(wrapResult(result))
-        } catch {
-          reply(wrapError(error))
+        api.getVolume { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -369,11 +382,13 @@ class RadioPlayerHostApiSetup {
     let nextSourceChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.nextSource\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       nextSourceChannel.setMessageHandler { _, reply in
-        do {
-          try api.nextSource()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.nextSource { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -382,11 +397,13 @@ class RadioPlayerHostApiSetup {
     let previousSourceChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.previousSource\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       previousSourceChannel.setMessageHandler { _, reply in
-        do {
-          try api.previousSource()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.previousSource { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -397,11 +414,13 @@ class RadioPlayerHostApiSetup {
       jumpToSourceAtIndexChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
         let indexArg = args[0] as! Int64
-        do {
-          try api.jumpToSourceAtIndex(index: indexArg)
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.jumpToSourceAtIndex(index: indexArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {
@@ -410,11 +429,13 @@ class RadioPlayerHostApiSetup {
     let disposeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.dispose\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       disposeChannel.setMessageHandler { _, reply in
-        do {
-          try api.dispose()
-          reply(wrapResult(nil))
-        } catch {
-          reply(wrapError(error))
+        api.dispose { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
         }
       }
     } else {

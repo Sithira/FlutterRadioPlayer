@@ -1,3 +1,28 @@
+# 4.1.0
+
+* Converted all HostApi methods to Pigeon `@async`; platform calls now wait for
+  genuine readiness instead of being silently buffered. Dart `Future`s complete
+  only after the underlying platform operation actually runs. No public Dart API
+  changes.
+* Android: replaced ad-hoc pending-operations queue with the native Media3
+  `ListenableFuture<MediaController>` readiness gate; listeners run on
+  `ContextCompat.getMainExecutor` for correct thread affinity and errors surface
+  as `FlutterError` to Dart instead of being swallowed.
+* Android: removed bogus `Player.STATE_READY -> false` emission that could report
+  `isPlaying = false` during a buffer stall mid-playback.
+* Android: `VolumeInfo.isMuted` now honestly reflects `volume == 0`.
+* Android: artwork URL detection now checks `http://` / `https://` prefix instead of
+  substring `contains("http")`.
+* Android: `FlutterLoader` lookup now uses the `FlutterInjector.instance()`
+  singleton instead of reinitializing per asset load.
+* Android: `dispose()` now also stops the playback service.
+* iOS: `onPlaybackStateChanged` no longer emits `false` during buffer stalls
+  mid-playback (now uses `timeControlStatus != .paused`). Lock-screen playback
+  rate still tracks the precise `.playing` state.
+* iOS: `dispose()` now removes notification observers and deactivates the
+  `AVAudioSession` with `.notifyOthersOnDeactivation` so other audio apps can
+  resume. `initialize()` re-attaches observers to support dispose/reinit cycles.
+
 # 4.0.2
 
 * iOS: Added Swift Package Manager support
