@@ -1,6 +1,6 @@
 PODS:
   - Flutter (1.0.0)
-  - flutter_radio_player_ios (4.0.0):
+  - flutter_radio_player_ios (4.1.0):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
@@ -20,7 +20,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_radio_player_ios: 1adff5797c9c49896c5946d439b757cae7c507e2
+  flutter_radio_player_ios: e763f10f5aa5c1bb56fac1b52402dbff03a260a1
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
 
 PODFILE CHECKSUM: ec8b70a489dd1f81e53ef185cf7ad30fce8f8d00
