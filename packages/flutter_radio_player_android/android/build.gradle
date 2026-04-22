@@ -28,7 +28,7 @@ android {
         namespace = "me.sithiramunasinghe.flutter.flutter_radio_player"
     }
 
-    compileSdk = 35
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -49,13 +49,13 @@ android {
     }
 
     dependencies {
-        implementation("androidx.media3:media3-exoplayer:1.6.1")
-        implementation("androidx.media3:media3-exoplayer-hls:1.6.1")
-        implementation("androidx.media3:media3-session:1.6.1")
-        implementation("androidx.media3:media3-common:1.6.1")
+        implementation("androidx.media3:media3-exoplayer:1.10.0")
+        implementation("androidx.media3:media3-exoplayer-hls:1.10.0")
+        implementation("androidx.media3:media3-session:1.10.0")
+        implementation("androidx.media3:media3-common:1.10.0")
 
         testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.14.2")
+        testImplementation("org.mockito:mockito-core:5.23.0")
     }
 
     testOptions {

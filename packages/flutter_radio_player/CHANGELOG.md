@@ -1,6 +1,7 @@
 # 4.0.2
 
 * Added Swift Package Manager support for iOS
+* Android: upgraded Media3 to 1.10.0, compileSdk to 36, aligned Kotlin to 2.1.20
 
 # 4.0.1
 
