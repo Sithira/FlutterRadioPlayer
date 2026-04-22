@@ -1,3 +1,7 @@
+# 4.0.2
+
+* iOS: Added Swift Package Manager support
+
 # 4.0.1
 
 * Added dartdoc comments to all public API elements across app-facing and platform interface packages

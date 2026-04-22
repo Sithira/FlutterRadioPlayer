@@ -1,3 +1,7 @@
+# 4.0.2
+
+* Added Swift Package Manager support
+
 # 4.0.1
 
 * Dependency updates
