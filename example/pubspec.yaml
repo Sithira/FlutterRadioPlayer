@@ -19,6 +19,16 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+dependency_overrides:
+  flutter_radio_player:
+    path: ../packages/flutter_radio_player
+  flutter_radio_player_platform_interface:
+    path: ../packages/flutter_radio_player_platform_interface
+  flutter_radio_player_android:
+    path: ../packages/flutter_radio_player_android
+  flutter_radio_player_ios:
+    path: ../packages/flutter_radio_player_ios
+
 flutter:
   uses-material-design: true
   assets:

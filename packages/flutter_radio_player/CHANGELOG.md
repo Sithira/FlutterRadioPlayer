@@ -1,12 +1,12 @@
 # 4.0.2
 
-* iOS: Added Swift Package Manager support
-* Android: Bumped Media3 to 1.10.0, compileSdk to 36, aligned Kotlin to 2.1.20
+* Added Swift Package Manager support for iOS
+* Android: upgraded Media3 to 1.10.0, compileSdk to 36, aligned Kotlin to 2.1.20
 
 # 4.0.1
 
-* Added dartdoc comments to all public API elements across app-facing and platform interface packages
-* Added example app (`packages/flutter_radio_player/example/`) for pub.dev scoring
+* Added dartdoc comments to all public API elements
+* Added example app for pub.dev scoring
 
 # 4.0.0
 

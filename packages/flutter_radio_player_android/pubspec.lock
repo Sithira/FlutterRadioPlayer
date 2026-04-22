@@ -153,9 +153,10 @@ packages:
   flutter_radio_player_platform_interface:
     dependency: "direct main"
     description:
-      path: "../flutter_radio_player_platform_interface"
-      relative: true
-    source: path
+      name: flutter_radio_player_platform_interface
+      sha256: "5a9c5688af537157333c85fb42433a5fcaca4d2c7df3d313760910128760af21"
+      url: "https://pub.dev"
+    source: hosted
     version: "4.0.0"
   flutter_test:
     dependency: "direct dev"

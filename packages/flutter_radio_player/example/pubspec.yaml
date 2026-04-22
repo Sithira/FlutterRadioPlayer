@@ -1,0 +1,20 @@
+name: flutter_radio_player_example
+description: Example app for flutter_radio_player.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_radio_player:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
