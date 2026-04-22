@@ -246,7 +246,27 @@ Add the following permissions to your `AndroidManifest.xml`:
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 ```
 
-> These permissions are already declared by the plugin. You only need to add them if your app's manifest merger requires it.
+> `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` are already declared by the plugin. `INTERNET` must be declared by the host app.
+
+If your radio streams use plain HTTP (not HTTPS), opt in to cleartext traffic. Either add the attribute to your `<application>` tag:
+
+```xml
+<application
+    android:usesCleartextTraffic="true"
+    ...>
+```
+
+Or, preferred, whitelist only the streaming domains via a network security config (`res/xml/network_security_config.xml`):
+
+```xml
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">your-stream-host.example.com</domain>
+    </domain-config>
+</network-security-config>
+```
+
+Then reference it from your `<application>` tag: `android:networkSecurityConfig="@xml/network_security_config"`.
 
 ### iOS
 
