@@ -92,7 +92,9 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onVolumeChanged(volume: Float) {
                 mainHandler.post {
-                    volumeSink?.success(VolumeInfoMessage(volume = volume.toDouble(), isMuted = false))
+                    volumeSink?.success(
+                        VolumeInfoMessage(volume = volume.toDouble(), isMuted = volume == 0f)
+                    )
                 }
             }
 
@@ -117,11 +119,6 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    mainHandler.post { playbackStateSink?.success(false) }
-                }
-            }
         })
     }
 }

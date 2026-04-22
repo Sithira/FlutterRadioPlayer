@@ -11,44 +11,57 @@ public class FlutterRadioPlayerPlugin: NSObject, FlutterPlugin, RadioPlayerHostA
         instance.setupEventChannels(messenger: registrar.messenger())
     }
 
-    func initialize(sources: [RadioSourceMessage], playWhenReady: Bool) throws {
+    func initialize(
+        sources: [RadioSourceMessage],
+        playWhenReady: Bool,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
         service.initialize(sources: sources, playWhenReady: playWhenReady)
+        completion(.success(()))
     }
 
-    func play() throws {
+    func play(completion: @escaping (Result<Void, Error>) -> Void) {
         service.play()
+        completion(.success(()))
     }
 
-    func pause() throws {
+    func pause(completion: @escaping (Result<Void, Error>) -> Void) {
         service.pause()
+        completion(.success(()))
     }
 
-    func playOrPause() throws {
+    func playOrPause(completion: @escaping (Result<Void, Error>) -> Void) {
         service.playOrPause()
+        completion(.success(()))
     }
 
-    func setVolume(volume: Double) throws {
+    func setVolume(volume: Double, completion: @escaping (Result<Void, Error>) -> Void) {
         service.setVolume(volume: Float(volume))
+        completion(.success(()))
     }
 
-    func getVolume() throws -> Double {
-        return Double(service.getVolume())
+    func getVolume(completion: @escaping (Result<Double, Error>) -> Void) {
+        completion(.success(Double(service.getVolume())))
     }
 
-    func nextSource() throws {
+    func nextSource(completion: @escaping (Result<Void, Error>) -> Void) {
         service.nextSource()
+        completion(.success(()))
     }
 
-    func previousSource() throws {
+    func previousSource(completion: @escaping (Result<Void, Error>) -> Void) {
         service.previousSource()
+        completion(.success(()))
     }
 
-    func jumpToSourceAtIndex(index: Int64) throws {
+    func jumpToSourceAtIndex(index: Int64, completion: @escaping (Result<Void, Error>) -> Void) {
         service.jumpToSourceAtIndex(index: Int(index))
+        completion(.success(()))
     }
 
-    func dispose() throws {
+    func dispose(completion: @escaping (Result<Void, Error>) -> Void) {
         service.dispose()
+        completion(.success(()))
     }
 
     private func setupEventChannels(messenger: FlutterBinaryMessenger) {

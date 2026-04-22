@@ -212,18 +212,19 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 
 val MessagesPigeonMethodCodec = StandardMethodCodec(MessagesPigeonCodec())
 
+
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface RadioPlayerHostApi {
-  fun initialize(sources: List<RadioSourceMessage>, playWhenReady: Boolean)
-  fun play()
-  fun pause()
-  fun playOrPause()
-  fun setVolume(volume: Double)
-  fun getVolume(): Double
-  fun nextSource()
-  fun previousSource()
-  fun jumpToSourceAtIndex(index: Long)
-  fun dispose()
+  fun initialize(sources: List<RadioSourceMessage>, playWhenReady: Boolean, callback: (Result<Unit>) -> Unit)
+  fun play(callback: (Result<Unit>) -> Unit)
+  fun pause(callback: (Result<Unit>) -> Unit)
+  fun playOrPause(callback: (Result<Unit>) -> Unit)
+  fun setVolume(volume: Double, callback: (Result<Unit>) -> Unit)
+  fun getVolume(callback: (Result<Double>) -> Unit)
+  fun nextSource(callback: (Result<Unit>) -> Unit)
+  fun previousSource(callback: (Result<Unit>) -> Unit)
+  fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit)
+  fun dispose(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by RadioPlayerHostApi. */
@@ -241,13 +242,14 @@ interface RadioPlayerHostApi {
             val args = message as List<Any?>
             val sourcesArg = args[0] as List<RadioSourceMessage>
             val playWhenReadyArg = args[1] as Boolean
-            val wrapped: List<Any?> = try {
-              api.initialize(sourcesArg, playWhenReadyArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.initialize(sourcesArg, playWhenReadyArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -257,13 +259,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.play$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.play()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.play{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -273,13 +276,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.pause$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.pause()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.pause{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -289,13 +293,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.playOrPause$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.playOrPause()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.playOrPause{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -307,13 +312,14 @@ interface RadioPlayerHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val volumeArg = args[0] as Double
-            val wrapped: List<Any?> = try {
-              api.setVolume(volumeArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.setVolume(volumeArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -323,12 +329,15 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.getVolume$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              listOf(api.getVolume())
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.getVolume{ result: Result<Double> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -338,13 +347,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.nextSource$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.nextSource()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.nextSource{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -354,13 +364,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.previousSource$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.previousSource()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.previousSource{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -372,13 +383,14 @@ interface RadioPlayerHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val indexArg = args[0] as Long
-            val wrapped: List<Any?> = try {
-              api.jumpToSourceAtIndex(indexArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.jumpToSourceAtIndex(indexArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -388,13 +400,14 @@ interface RadioPlayerHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.dispose$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.dispose()
-              listOf(null)
-            } catch (exception: Throwable) {
-              MessagesPigeonUtils.wrapError(exception)
+            api.dispose{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

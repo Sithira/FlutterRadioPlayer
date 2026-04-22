@@ -1,3 +1,18 @@
+# 4.1.0
+
+* Converted all HostApi methods to Pigeon `@async`; replaced ad-hoc pending-ops
+  queue with the native Media3 `ListenableFuture<MediaController>` readiness
+  gate, dispatched on `ContextCompat.getMainExecutor`. Errors surface as
+  `FlutterError` to Dart instead of being swallowed.
+* Removed incorrect `Player.STATE_READY -> false` emission that could report
+  `isPlaying = false` during a buffer stall mid-playback.
+* `VolumeInfo.isMuted` now honestly reflects `volume == 0`.
+* Artwork URL detection now checks `http://` / `https://` prefix instead of
+  substring `contains("http")`.
+* `FlutterLoader` lookup now goes through `FlutterInjector.instance()` singleton
+  rather than reinitializing per asset load.
+* `dispose()` now also stops the `PlaybackService`.
+
 # 4.0.2
 
 * Bumped Media3 to 1.10.0 (exoplayer, exoplayer-hls, session, common)

@@ -22,15 +22,25 @@ class VolumeInfoMessage {
 
 @HostApi()
 abstract class RadioPlayerHostApi {
+  @async
   void initialize(List<RadioSourceMessage> sources, bool playWhenReady);
+  @async
   void play();
+  @async
   void pause();
+  @async
   void playOrPause();
+  @async
   void setVolume(double volume);
+  @async
   double getVolume();
+  @async
   void nextSource();
+  @async
   void previousSource();
+  @async
   void jumpToSourceAtIndex(int index);
+  @async
   void dispose();
 }
 

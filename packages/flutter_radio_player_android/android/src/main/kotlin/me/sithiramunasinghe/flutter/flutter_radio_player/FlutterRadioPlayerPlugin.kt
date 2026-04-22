@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -15,20 +16,20 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.io.ByteStreams
-import com.google.common.util.concurrent.MoreExecutors
-import io.flutter.embedding.engine.loader.FlutterLoader
+import com.google.common.util.concurrent.ListenableFuture
+import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService
 import java.io.InputStream
+import java.util.concurrent.Executor
 
 class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostApi {
 
     private var applicationContext: Context? = null
-    private var mediaController: MediaController? = null
-    private var isMediaControllerAvailable = false
-    private val pendingOperations = mutableListOf<() -> Unit>()
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+    private lateinit var mainExecutor: Executor
 
     private var playbackStateSink: PigeonEventSink<Boolean>? = null
     private var nowPlayingSink: PigeonEventSink<NowPlayingInfoMessage>? = null
@@ -47,6 +48,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = flutterPluginBinding.applicationContext
+        mainExecutor = ContextCompat.getMainExecutor(flutterPluginBinding.applicationContext)
         RadioPlayerHostApi.setUp(flutterPluginBinding.binaryMessenger, this)
         setupEventChannels(flutterPluginBinding)
 
@@ -54,16 +56,15 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
             flutterPluginBinding.applicationContext,
             ComponentName(flutterPluginBinding.applicationContext, PlaybackService::class.java)
         )
-
-        val mediaControllerFuture = MediaController.Builder(applicationContext!!, token).buildAsync()
-        mediaControllerFuture.addListener({
-            mediaController = mediaControllerFuture.get()
-            isMediaControllerAvailable = true
-            PlaybackService.playbackStateSink = playbackStateSink
-            PlaybackService.nowPlayingSink = nowPlayingSink
-            PlaybackService.volumeSink = volumeSink
-            executePendingOperations()
-        }, MoreExecutors.directExecutor())
+        controllerFuture = MediaController.Builder(flutterPluginBinding.applicationContext, token)
+            .buildAsync()
+            .also { future ->
+                future.addListener({
+                    PlaybackService.playbackStateSink = playbackStateSink
+                    PlaybackService.nowPlayingSink = nowPlayingSink
+                    PlaybackService.volumeSink = volumeSink
+                }, mainExecutor)
+            }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -74,9 +75,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
         playbackStateSink = null
         nowPlayingSink = null
         volumeSink = null
-        mediaController?.release()
-        mediaController = null
-        isMediaControllerAvailable = false
+        releaseController()
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -90,77 +89,127 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
     override fun onDetachedFromActivity() {}
 
     @OptIn(UnstableApi::class)
-    override fun initialize(sources: List<RadioSourceMessage>, playWhenReady: Boolean) {
-        withMediaController { controller ->
-            if (controller.isPlaying) {
-                playbackStateSink?.success(true)
-                val title = PlaybackService.latestMetadata?.title?.toString()
-                nowPlayingSink?.success(NowPlayingInfoMessage(title = title))
-                return@withMediaController
-            }
-
-            controller.volume = 0.5F
-            controller.playWhenReady = playWhenReady
-
-            if (sources.isNotEmpty()) {
-                controller.setMediaItems(sources.map { buildMediaItem(it) })
-                controller.prepare()
-            }
-        }
-    }
-
-    override fun play() {
-        withMediaController { it.play() }
-    }
-
-    override fun pause() {
-        withMediaController { it.pause() }
-    }
-
-    override fun playOrPause() {
-        withMediaController { controller ->
-            if (controller.mediaItemCount != 0) {
-                if (controller.isPlaying) controller.pause() else controller.play()
-            }
-        }
-    }
-
-    override fun setVolume(volume: Double) {
-        withMediaController { it.volume = volume.toFloat() }
-    }
-
-    override fun getVolume(): Double {
-        return mediaController?.volume?.toDouble() ?: 0.5
-    }
-
-    override fun nextSource() {
-        withMediaController {
+    override fun initialize(
+        sources: List<RadioSourceMessage>,
+        playWhenReady: Boolean,
+        callback: (Result<Unit>) -> Unit,
+    ) = runOnController(callback) { controller ->
+        controller.volume = 0.5F
+        controller.playWhenReady = playWhenReady
+        if (sources.isNotEmpty()) {
             PlaybackService.latestMetadata = null
-            it.seekToNextMediaItem()
+            controller.setMediaItems(sources.map { buildMediaItem(it) })
+            controller.prepare()
         }
+        Result.success(Unit)
     }
 
-    override fun previousSource() {
-        withMediaController {
-            PlaybackService.latestMetadata = null
-            it.seekToPreviousMediaItem()
-        }
+    override fun play(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+        it.play()
+        Result.success(Unit)
     }
 
-    override fun jumpToSourceAtIndex(index: Long) {
-        withMediaController {
+    override fun pause(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+        it.pause()
+        Result.success(Unit)
+    }
+
+    override fun playOrPause(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+        if (it.mediaItemCount != 0) {
+            if (it.isPlaying) it.pause() else it.play()
+        }
+        Result.success(Unit)
+    }
+
+    override fun setVolume(volume: Double, callback: (Result<Unit>) -> Unit) =
+        runOnController(callback) {
+            it.volume = volume.toFloat()
+            Result.success(Unit)
+        }
+
+    override fun getVolume(callback: (Result<Double>) -> Unit) = runOnController(callback) {
+        Result.success(it.volume.toDouble())
+    }
+
+    override fun nextSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+        PlaybackService.latestMetadata = null
+        it.seekToNextMediaItem()
+        Result.success(Unit)
+    }
+
+    override fun previousSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+        PlaybackService.latestMetadata = null
+        it.seekToPreviousMediaItem()
+        Result.success(Unit)
+    }
+
+    override fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit) =
+        runOnController(callback) {
             PlaybackService.latestMetadata = null
             it.seekToDefaultPosition(index.toInt())
+            Result.success(Unit)
         }
+
+    override fun dispose(callback: (Result<Unit>) -> Unit) {
+        releaseController()
+        applicationContext?.let {
+            it.stopService(Intent(it, PlaybackService::class.java))
+        }
+        callback(Result.success(Unit))
     }
 
-    override fun dispose() {
-        mediaController?.run {
-            stop()
-            release()
+    private fun <T> runOnController(
+        callback: (Result<T>) -> Unit,
+        block: (MediaController) -> Result<T>,
+    ) {
+        val future = controllerFuture
+        if (future == null) {
+            callback(Result.failure(notReadyError()))
+            return
         }
-        mediaController = null
-        isMediaControllerAvailable = false
+        future.addListener({
+            val outcome = try {
+                val controller = future.get()
+                if (controller == null) {
+                    Result.failure(notReadyError())
+                } else {
+                    block(controller)
+                }
+            } catch (t: Throwable) {
+                Result.failure(toFlutterError(t))
+            }
+            callback(outcome)
+        }, mainExecutor)
+    }
+
+    private fun releaseController() {
+        controllerFuture?.let { future ->
+            if (future.isDone) {
+                try {
+                    future.get()?.run {
+                        stop()
+                        release()
+                    }
+                } catch (_: Throwable) {
+                    // nothing usable to release
+                }
+            } else {
+                future.cancel(false)
+            }
+        }
+        controllerFuture = null
+    }
+
+    private fun notReadyError(): FlutterError =
+        FlutterError("controller_unavailable", "MediaController is not available", null)
+
+    private fun toFlutterError(t: Throwable): FlutterError {
+        val cause = (t as? java.util.concurrent.ExecutionException)?.cause ?: t
+        return FlutterError(
+            cause::class.java.simpleName,
+            cause.message ?: "MediaController operation failed",
+            null,
+        )
     }
 
     private fun setupEventChannels(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -170,7 +219,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
                 override fun onListen(arguments: Any?, sink: PigeonEventSink<Boolean>) {
                     playbackStateSink = sink
                     PlaybackService.playbackStateSink = sink
-                    executePendingOperations()
                 }
                 override fun onCancel(arguments: Any?) {
                     playbackStateSink = null
@@ -185,7 +233,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
                 override fun onListen(arguments: Any?, sink: PigeonEventSink<NowPlayingInfoMessage>) {
                     nowPlayingSink = sink
                     PlaybackService.nowPlayingSink = sink
-                    executePendingOperations()
                 }
                 override fun onCancel(arguments: Any?) {
                     nowPlayingSink = null
@@ -209,20 +256,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
         )
     }
 
-    private fun withMediaController(action: (MediaController) -> Unit) {
-        if (isMediaControllerAvailable && mediaController != null) {
-            action(mediaController!!)
-        } else {
-            pendingOperations.add { action(mediaController!!) }
-        }
-    }
-
-    private fun executePendingOperations() {
-        if (!isMediaControllerAvailable || mediaController == null) return
-        pendingOperations.forEach { it() }
-        pendingOperations.clear()
-    }
-
     @OptIn(UnstableApi::class)
     private fun buildMediaItem(source: RadioSourceMessage): MediaItem {
         val metaBuilder = MediaMetadata.Builder()
@@ -232,15 +265,15 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
             metaBuilder.setTitle(source.title)
             metaBuilder.setArtist(getAppName())
         }
-        if (!source.artwork.isNullOrEmpty()) {
-            if (source.artwork!!.contains("http")) {
-                metaBuilder.setArtworkUri(source.artwork!!.toUri())
+        val artwork = source.artwork
+        if (!artwork.isNullOrEmpty()) {
+            if (artwork.startsWith("http://") || artwork.startsWith("https://")) {
+                metaBuilder.setArtworkUri(artwork.toUri())
             } else {
-                val stream = loadFlutterAsset(source.artwork)
-                if (stream != null) {
+                loadFlutterAsset(artwork)?.use { stream ->
                     metaBuilder.setArtworkData(
                         ByteStreams.toByteArray(stream),
-                        MediaMetadata.PICTURE_TYPE_FRONT_COVER
+                        MediaMetadata.PICTURE_TYPE_FRONT_COVER,
                     )
                 }
             }
@@ -251,25 +284,23 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
             .build()
     }
 
-    private fun loadFlutterAsset(assetPath: String?): InputStream? {
+    private fun loadFlutterAsset(assetPath: String): InputStream? {
         return try {
-            val flutterLoader = FlutterLoader()
-            flutterLoader.startInitialization(applicationContext!!)
-            flutterLoader.ensureInitializationComplete(applicationContext!!, null)
-            val key = flutterLoader.getLookupKeyForAsset(assetPath!!)
+            val key = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(assetPath)
             val assetManager: AssetManager = applicationContext!!.assets
             assetManager.open(key)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
     private fun getAppName(): String? {
+        val context = applicationContext ?: return null
         return try {
-            val pm: PackageManager = applicationContext!!.packageManager
-            val ai = pm.getApplicationInfo(applicationContext!!.packageName, 0)
+            val pm: PackageManager = context.packageManager
+            val ai = pm.getApplicationInfo(context.packageName, 0)
             pm.getApplicationLabel(ai) as String
-        } catch (e: PackageManager.NameNotFoundException) {
+        } catch (_: PackageManager.NameNotFoundException) {
             null
         }
     }
