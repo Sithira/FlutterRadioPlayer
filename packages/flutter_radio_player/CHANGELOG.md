@@ -1,3 +1,39 @@
+# 4.2.0
+
+* Added `FlutterRadioPlayer.instance`, `state` and `stateStream`; the public
+  constructor is unchanged, but every instance drives the same native player.
+  New `stateStream` listeners first receive the latest state. `state` is
+  eventually consistent.
+* Re-exports `RadioPlayerState`, `PlaybackStatus`, `RadioPlayerError` and
+  `RadioPlayerErrorCode`. Playback errors now appear as `status == error` with
+  `state.error`. Android emits `network` and `unknown`; iOS also emits
+  `invalidSource`; the other codes are reserved in 4.x.
+* `isPlayingStream`, `nowPlayingStream` and `volumeStream` are single shared
+  streams derived from the state: several listeners work, identical consecutive
+  values are no longer emitted, and they do not replay.
+* `play()`, `pause()`, `playOrPause()`, `nextSource()`, `previousSource()` and
+  `jumpToSourceAtIndex()` before `initialize()` or after `dispose()` are ignored
+  and log a warning; `initialize()` need not be awaited first. `dispose()`
+  followed by `initialize()` works repeatedly on both platforms.
+* A user-initiated `play()` or `playOrPause()` after a failure retries the
+  current source.
+* Android: tapping the notification opens the launcher activity; playback
+  pauses when headphones are unplugged; `setVolume()` before `initialize()` is
+  ignored; `dispose()` stops the service and the state returns to idle.
+* iOS: the audio session is activated when playback starts, not at launch;
+  an early `play()` before `initialize()` is now ignored (it used to take
+  effect once a stream was loaded); after an interruption playback resumes only
+  if it was active before; a source without artwork no longer shows the
+  previous source's artwork; switching to an invalid source stops the previous
+  stream and reports `invalidSource`; `isPlayingStream` is no longer `true`
+  while nothing is loaded.
+* `initialize([])` leaves the player with no sources: the current stream stops
+  and the state is idle. On Android this replaces the old behaviour of pausing
+  and keeping the previous list.
+* Requires platform packages 4.2.0.
+* Docs: added a "Player state" section, corrected the Android permission note
+  (`INTERNET` must be declared by the app) and the example link.
+
 # 4.1.0
 
 * Platform calls are now backed by Pigeon `@async`: returned `Future`s complete

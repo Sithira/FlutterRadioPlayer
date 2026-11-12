@@ -68,21 +68,21 @@ packages:
       path: "../flutter_radio_player_android"
       relative: true
     source: path
-    version: "4.1.0"
+    version: "4.2.0"
   flutter_radio_player_ios:
     dependency: "direct main"
     description:
       path: "../flutter_radio_player_ios"
       relative: true
     source: path
-    version: "4.1.0"
+    version: "4.2.0"
   flutter_radio_player_platform_interface:
     dependency: "direct main"
     description:
       path: "../flutter_radio_player_platform_interface"
       relative: true
     source: path
-    version: "4.1.0"
+    version: "4.2.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter

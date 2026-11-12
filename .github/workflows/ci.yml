@@ -13,6 +13,7 @@ jobs:
           - packages/flutter_radio_player_platform_interface
           - packages/flutter_radio_player_android
           - packages/flutter_radio_player_ios
+          - example
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -25,3 +26,75 @@ jobs:
         working-directory: ${{ matrix.package }}
       - run: flutter test
         working-directory: ${{ matrix.package }}
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.x
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter build apk --debug --android-skip-build-dependency-validation
+        working-directory: example
+
+  build-ios:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package-manager:
+          - swiftpm
+          - cocoapods
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.x
+      - run: flutter config --enable-swift-package-manager
+        if: matrix.package-manager == 'swiftpm'
+      - run: flutter config --no-enable-swift-package-manager
+        if: matrix.package-manager == 'cocoapods'
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter build ios --simulator --no-codesign
+        working-directory: example
+
+  build-flutter-350:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            build: flutter build apk --debug
+          - os: macos-latest
+            build: flutter build ios --simulator --no-codesign
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: runner.os == 'Linux'
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.0
+      - run: flutter create --platforms=android,ios --project-name scratch_app "$RUNNER_TEMP/scratch_app"
+      - run: |
+          for package in flutter_radio_player_platform_interface flutter_radio_player_android flutter_radio_player_ios; do
+            flutter pub add "override:$package:{\"path\":\"$GITHUB_WORKSPACE/packages/$package\"}"
+          done
+          flutter pub add flutter_radio_player --path "$GITHUB_WORKSPACE/packages/flutter_radio_player"
+        working-directory: ${{ runner.temp }}/scratch_app
+      - run: ${{ matrix.build }}
+        working-directory: ${{ runner.temp }}/scratch_app

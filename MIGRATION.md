@@ -91,4 +91,4 @@ Stream getters are now simple properties instead of method calls:
 #### Android
 - kotlinx-serialization dependency removed
 - Uses Media3/ExoPlayer for playback
-- `compileSdk` 35, `minSdk` 21
+- `compileSdk` 36, `minSdk` 21

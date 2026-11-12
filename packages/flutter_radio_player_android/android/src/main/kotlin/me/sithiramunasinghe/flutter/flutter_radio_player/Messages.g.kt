@@ -78,6 +78,36 @@ class FlutterError (
   val details: Any? = null
 ) : Throwable()
 
+enum class PlaybackStatusMessage(val raw: Int) {
+  IDLE(0),
+  LOADING(1),
+  PLAYING(2),
+  PAUSED(3),
+  ERROR(4);
+
+  companion object {
+    fun ofRaw(raw: Int): PlaybackStatusMessage? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+enum class RadioPlayerErrorCodeMessage(val raw: Int) {
+  INVALID_SOURCE(0),
+  NETWORK(1),
+  HTTP_STATUS(2),
+  UNSUPPORTED_FORMAT(3),
+  BACKGROUND_RESTRICTED(4),
+  TIMEOUT(5),
+  UNKNOWN(6);
+
+  companion object {
+    fun ofRaw(raw: Int): RadioPlayerErrorCodeMessage? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class RadioSourceMessage (
   val url: String,
@@ -113,23 +143,26 @@ data class RadioSourceMessage (
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class NowPlayingInfoMessage (
-  val title: String? = null
+data class RadioPlayerErrorMessage (
+  val code: RadioPlayerErrorCodeMessage,
+  val message: String
 )
  {
   companion object {
-    fun fromList(pigeonVar_list: List<Any?>): NowPlayingInfoMessage {
-      val title = pigeonVar_list[0] as String?
-      return NowPlayingInfoMessage(title)
+    fun fromList(pigeonVar_list: List<Any?>): RadioPlayerErrorMessage {
+      val code = pigeonVar_list[0] as RadioPlayerErrorCodeMessage
+      val message = pigeonVar_list[1] as String
+      return RadioPlayerErrorMessage(code, message)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      title,
+      code,
+      message,
     )
   }
   override fun equals(other: Any?): Boolean {
-    if (other !is NowPlayingInfoMessage) {
+    if (other !is RadioPlayerErrorMessage) {
       return false
     }
     if (this === other) {
@@ -141,26 +174,35 @@ data class NowPlayingInfoMessage (
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class VolumeInfoMessage (
+data class RadioPlayerStateMessage (
+  val status: PlaybackStatusMessage,
+  val currentIndex: Long? = null,
+  val nowPlayingTitle: String? = null,
   val volume: Double,
-  val isMuted: Boolean
+  val error: RadioPlayerErrorMessage? = null
 )
  {
   companion object {
-    fun fromList(pigeonVar_list: List<Any?>): VolumeInfoMessage {
-      val volume = pigeonVar_list[0] as Double
-      val isMuted = pigeonVar_list[1] as Boolean
-      return VolumeInfoMessage(volume, isMuted)
+    fun fromList(pigeonVar_list: List<Any?>): RadioPlayerStateMessage {
+      val status = pigeonVar_list[0] as PlaybackStatusMessage
+      val currentIndex = pigeonVar_list[1] as Long?
+      val nowPlayingTitle = pigeonVar_list[2] as String?
+      val volume = pigeonVar_list[3] as Double
+      val error = pigeonVar_list[4] as RadioPlayerErrorMessage?
+      return RadioPlayerStateMessage(status, currentIndex, nowPlayingTitle, volume, error)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      status,
+      currentIndex,
+      nowPlayingTitle,
       volume,
-      isMuted,
+      error,
     )
   }
   override fun equals(other: Any?): Boolean {
-    if (other !is VolumeInfoMessage) {
+    if (other !is RadioPlayerStateMessage) {
       return false
     }
     if (this === other) {
@@ -174,18 +216,28 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
       129.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          RadioSourceMessage.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          PlaybackStatusMessage.ofRaw(it.toInt())
         }
       }
       130.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          NowPlayingInfoMessage.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          RadioPlayerErrorCodeMessage.ofRaw(it.toInt())
         }
       }
       131.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          VolumeInfoMessage.fromList(it)
+          RadioSourceMessage.fromList(it)
+        }
+      }
+      132.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          RadioPlayerErrorMessage.fromList(it)
+        }
+      }
+      133.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          RadioPlayerStateMessage.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -193,16 +245,24 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
   }
   override fun writeValue(stream: ByteArrayOutputStream, value: Any?)   {
     when (value) {
-      is RadioSourceMessage -> {
+      is PlaybackStatusMessage -> {
         stream.write(129)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is NowPlayingInfoMessage -> {
+      is RadioPlayerErrorCodeMessage -> {
         stream.write(130)
+        writeValue(stream, value.raw.toLong())
+      }
+      is RadioSourceMessage -> {
+        stream.write(131)
         writeValue(stream, value.toList())
       }
-      is VolumeInfoMessage -> {
-        stream.write(131)
+      is RadioPlayerErrorMessage -> {
+        stream.write(132)
+        writeValue(stream, value.toList())
+      }
+      is RadioPlayerStateMessage -> {
+        stream.write(133)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -225,6 +285,7 @@ interface RadioPlayerHostApi {
   fun previousSource(callback: (Result<Unit>) -> Unit)
   fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit)
   fun dispose(callback: (Result<Unit>) -> Unit)
+  fun getState(callback: (Result<RadioPlayerStateMessage>) -> Unit)
 
   companion object {
     /** The codec used by RadioPlayerHostApi. */
@@ -413,6 +474,24 @@ interface RadioPlayerHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.getState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getState{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }
@@ -453,53 +532,19 @@ class PigeonEventSink<T>(private val sink: EventChannel.EventSink) {
   }
 }
       
-abstract class OnPlaybackStateChangedStreamHandler : MessagesPigeonEventChannelWrapper<Boolean> {
+abstract class OnStateChangedStreamHandler : MessagesPigeonEventChannelWrapper<RadioPlayerStateMessage> {
   companion object {
-    fun register(messenger: BinaryMessenger, streamHandler: OnPlaybackStateChangedStreamHandler, instanceName: String = "") {
-      var channelName: String = "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onPlaybackStateChanged"
+    fun register(messenger: BinaryMessenger, streamHandler: OnStateChangedStreamHandler, instanceName: String = "") {
+      var channelName: String = "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onStateChanged"
       if (instanceName.isNotEmpty()) {
         channelName += ".$instanceName"
       }
-      val internalStreamHandler = MessagesPigeonStreamHandler<Boolean>(streamHandler)
+      val internalStreamHandler = MessagesPigeonStreamHandler<RadioPlayerStateMessage>(streamHandler)
       EventChannel(messenger, channelName, MessagesPigeonMethodCodec).setStreamHandler(internalStreamHandler)
     }
   }
 // Implement methods from MessagesPigeonEventChannelWrapper
-override fun onListen(p0: Any?, sink: PigeonEventSink<Boolean>) {}
-
-override fun onCancel(p0: Any?) {}
-}
-      
-abstract class OnNowPlayingChangedStreamHandler : MessagesPigeonEventChannelWrapper<NowPlayingInfoMessage> {
-  companion object {
-    fun register(messenger: BinaryMessenger, streamHandler: OnNowPlayingChangedStreamHandler, instanceName: String = "") {
-      var channelName: String = "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onNowPlayingChanged"
-      if (instanceName.isNotEmpty()) {
-        channelName += ".$instanceName"
-      }
-      val internalStreamHandler = MessagesPigeonStreamHandler<NowPlayingInfoMessage>(streamHandler)
-      EventChannel(messenger, channelName, MessagesPigeonMethodCodec).setStreamHandler(internalStreamHandler)
-    }
-  }
-// Implement methods from MessagesPigeonEventChannelWrapper
-override fun onListen(p0: Any?, sink: PigeonEventSink<NowPlayingInfoMessage>) {}
-
-override fun onCancel(p0: Any?) {}
-}
-      
-abstract class OnVolumeChangedStreamHandler : MessagesPigeonEventChannelWrapper<VolumeInfoMessage> {
-  companion object {
-    fun register(messenger: BinaryMessenger, streamHandler: OnVolumeChangedStreamHandler, instanceName: String = "") {
-      var channelName: String = "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onVolumeChanged"
-      if (instanceName.isNotEmpty()) {
-        channelName += ".$instanceName"
-      }
-      val internalStreamHandler = MessagesPigeonStreamHandler<VolumeInfoMessage>(streamHandler)
-      EventChannel(messenger, channelName, MessagesPigeonMethodCodec).setStreamHandler(internalStreamHandler)
-    }
-  }
-// Implement methods from MessagesPigeonEventChannelWrapper
-override fun onListen(p0: Any?, sink: PigeonEventSink<VolumeInfoMessage>) {}
+override fun onListen(p0: Any?, sink: PigeonEventSink<RadioPlayerStateMessage>) {}
 
 override fun onCancel(p0: Any?) {}
 }

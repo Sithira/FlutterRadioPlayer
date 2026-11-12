@@ -64,57 +64,27 @@ public class FlutterRadioPlayerPlugin: NSObject, FlutterPlugin, RadioPlayerHostA
         completion(.success(()))
     }
 
+    func getState(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void) {
+        completion(.success(service.currentState()))
+    }
+
     private func setupEventChannels(messenger: FlutterBinaryMessenger) {
-        OnPlaybackStateChangedStreamHandler.register(
+        OnStateChangedStreamHandler.register(
             with: messenger,
-            streamHandler: PlaybackStateStreamWrapper(service: service)
-        )
-        OnNowPlayingChangedStreamHandler.register(
-            with: messenger,
-            streamHandler: NowPlayingStreamWrapper(service: service)
-        )
-        OnVolumeChangedStreamHandler.register(
-            with: messenger,
-            streamHandler: VolumeStreamWrapper(service: service)
+            streamHandler: StateStreamWrapper(service: service)
         )
     }
 }
 
-private class PlaybackStateStreamWrapper: OnPlaybackStateChangedStreamHandler {
+private class StateStreamWrapper: OnStateChangedStreamHandler {
     let service: RadioPlayerService
     init(service: RadioPlayerService) { self.service = service }
 
-    override func onListen(withArguments arguments: Any?, sink: PigeonEventSink<Bool>) {
-        service.playbackStateSink = sink
+    override func onListen(withArguments arguments: Any?, sink: PigeonEventSink<RadioPlayerStateMessage>) {
+        service.setStateSink(sink)
     }
 
     override func onCancel(withArguments arguments: Any?) {
-        service.playbackStateSink = nil
-    }
-}
-
-private class NowPlayingStreamWrapper: OnNowPlayingChangedStreamHandler {
-    let service: RadioPlayerService
-    init(service: RadioPlayerService) { self.service = service }
-
-    override func onListen(withArguments arguments: Any?, sink: PigeonEventSink<NowPlayingInfoMessage>) {
-        service.nowPlayingSink = sink
-    }
-
-    override func onCancel(withArguments arguments: Any?) {
-        service.nowPlayingSink = nil
-    }
-}
-
-private class VolumeStreamWrapper: OnVolumeChangedStreamHandler {
-    let service: RadioPlayerService
-    init(service: RadioPlayerService) { self.service = service }
-
-    override func onListen(withArguments arguments: Any?, sink: PigeonEventSink<VolumeInfoMessage>) {
-        service.volumeSink = sink
-    }
-
-    override func onCancel(withArguments arguments: Any?) {
-        service.volumeSink = nil
+        service.setStateSink(nil)
     }
 }

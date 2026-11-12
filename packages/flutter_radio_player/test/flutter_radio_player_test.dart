@@ -8,6 +8,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 class FakePlatform extends FlutterRadioPlayerPlatform
     with MockPlatformInterfaceMixin {
   List<String> calls = [];
+  final stateController = StreamController<RadioPlayerState>.broadcast();
+  RadioPlayerState currentState = const RadioPlayerState();
 
   @override
   Future<void> initialize(List<RadioSource> sources,
@@ -43,6 +45,11 @@ class FakePlatform extends FlutterRadioPlayerPlatform
   @override
   Stream<VolumeInfo> get volumeStream =>
       Stream.value(const VolumeInfo(volume: 0.5, isMuted: false));
+
+  @override
+  RadioPlayerState get state => currentState;
+  @override
+  Stream<RadioPlayerState> get stateStream => stateController.stream;
 }
 
 void main() {
@@ -119,5 +126,53 @@ void main() {
     final value = await player.volumeStream.first;
     expect(value.volume, 0.5);
     expect(value.isMuted, false);
+  });
+
+  test('instance returns the same object each time', () {
+    expect(identical(FlutterRadioPlayer.instance, FlutterRadioPlayer.instance),
+        isTrue);
+  });
+
+  test('public constructor still creates new instances', () {
+    expect(identical(FlutterRadioPlayer(), FlutterRadioPlayer()), isFalse);
+  });
+
+  test('instance delegates to the platform', () async {
+    await FlutterRadioPlayer.instance.play();
+    expect(fakePlatform.calls, contains('play'));
+  });
+
+  test('state returns the platform state', () {
+    fakePlatform.currentState = const RadioPlayerState(
+      status: PlaybackStatus.playing,
+      currentIndex: 1,
+      volume: 0.8,
+    );
+    expect(player.state, fakePlatform.currentState);
+  });
+
+  test('state defaults to idle', () {
+    expect(player.state, const RadioPlayerState());
+    expect(player.state.status, PlaybackStatus.idle);
+  });
+
+  test('stateStream returns the platform stream', () async {
+    const first = RadioPlayerState(status: PlaybackStatus.loading);
+    const second = RadioPlayerState(
+      status: PlaybackStatus.error,
+      error: RadioPlayerError(
+        code: RadioPlayerErrorCode.network,
+        message: 'offline',
+      ),
+    );
+    final received = <RadioPlayerState>[];
+    final subscription = player.stateStream.listen(received.add);
+
+    fakePlatform.stateController.add(first);
+    fakePlatform.stateController.add(second);
+    await Future<void>.delayed(Duration.zero);
+    await subscription.cancel();
+
+    expect(received, [first, second]);
   });
 }

@@ -1,17 +1,17 @@
 package me.sithiramunasinghe.flutter.flutter_radio_player
 
-import android.app.Activity
-import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -19,31 +19,21 @@ import com.google.common.io.ByteStreams
 import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.embedding.engine.plugins.activity.ActivityAware
-import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.RadioStateStore
 import java.io.InputStream
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executor
 
-class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostApi {
+class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
 
     private var applicationContext: Context? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private lateinit var mainExecutor: Executor
 
-    private var playbackStateSink: PigeonEventSink<Boolean>? = null
-    private var nowPlayingSink: PigeonEventSink<NowPlayingInfoMessage>? = null
-    private var volumeSink: PigeonEventSink<VolumeInfoMessage>? = null
-
     companion object {
-        lateinit var sessionActivity: PendingIntent
-
-        private fun getSessionActivity(context: Context, activity: Activity) {
-            sessionActivity = PendingIntent.getActivity(
-                context, 0, Intent(context, activity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-        }
+        private const val LOG_TAG = "FlutterRadioPlayer"
+        private const val DEFAULT_VOLUME = 0.5
     }
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -51,115 +41,130 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
         mainExecutor = ContextCompat.getMainExecutor(flutterPluginBinding.applicationContext)
         RadioPlayerHostApi.setUp(flutterPluginBinding.binaryMessenger, this)
         setupEventChannels(flutterPluginBinding)
+    }
 
-        val token = SessionToken(
-            flutterPluginBinding.applicationContext,
-            ComponentName(flutterPluginBinding.applicationContext, PlaybackService::class.java)
-        )
-        controllerFuture = MediaController.Builder(flutterPluginBinding.applicationContext, token)
-            .buildAsync()
-            .also { future ->
-                future.addListener({
-                    PlaybackService.playbackStateSink = playbackStateSink
-                    PlaybackService.nowPlayingSink = nowPlayingSink
-                    PlaybackService.volumeSink = volumeSink
-                }, mainExecutor)
-            }
+    private fun ensureController() {
+        if (controllerFuture != null) return
+        val context = applicationContext ?: return
+        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        controllerFuture = MediaController.Builder(context, token).buildAsync()
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         RadioPlayerHostApi.setUp(binding.binaryMessenger, null)
-        PlaybackService.playbackStateSink = null
-        PlaybackService.nowPlayingSink = null
-        PlaybackService.volumeSink = null
-        playbackStateSink = null
-        nowPlayingSink = null
-        volumeSink = null
+        RadioStateStore.detachSink()
         releaseController()
     }
-
-    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        getSessionActivity(binding.activity.applicationContext, binding.activity)
-    }
-
-    override fun onDetachedFromActivityForConfigChanges() {}
-    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        getSessionActivity(binding.activity.applicationContext, binding.activity)
-    }
-    override fun onDetachedFromActivity() {}
 
     @OptIn(UnstableApi::class)
     override fun initialize(
         sources: List<RadioSourceMessage>,
         playWhenReady: Boolean,
         callback: (Result<Unit>) -> Unit,
-    ) = runOnController(callback) { controller ->
-        controller.volume = 0.5F
-        controller.playWhenReady = playWhenReady
-        if (sources.isNotEmpty()) {
-            PlaybackService.latestMetadata = null
-            controller.setMediaItems(sources.map { buildMediaItem(it) })
-            controller.prepare()
+    ) {
+        ensureController()
+        RadioStateStore.clearError()
+        runOnController(callback, Unit) { controller ->
+            controller.volume = 0.5F
+            controller.playWhenReady = playWhenReady
+            if (sources.isNotEmpty()) {
+                controller.setMediaItems(sources.map { buildMediaItem(it) })
+                controller.prepare()
+            } else {
+                controller.playWhenReady = false
+                controller.clearMediaItems()
+            }
+            Result.success(Unit)
         }
-        Result.success(Unit)
     }
 
-    override fun play(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        it.play()
-        Result.success(Unit)
+    override fun play(callback: (Result<Unit>) -> Unit) = runIfInitialized("play", callback) {
+        playFromCurrentState(it)
     }
 
-    override fun pause(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
+    override fun pause(callback: (Result<Unit>) -> Unit) = runIfInitialized("pause", callback) {
         it.pause()
-        Result.success(Unit)
     }
 
-    override fun playOrPause(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        if (it.mediaItemCount != 0) {
-            if (it.isPlaying) it.pause() else it.play()
+    override fun playOrPause(callback: (Result<Unit>) -> Unit) =
+        runIfInitialized("playOrPause", callback) {
+            if (it.mediaItemCount != 0) {
+                if (it.isPlaying) it.pause() else playFromCurrentState(it)
+            }
         }
-        Result.success(Unit)
-    }
 
     override fun setVolume(volume: Double, callback: (Result<Unit>) -> Unit) =
-        runOnController(callback) {
+        runIfInitialized("setVolume", callback) {
             it.volume = volume.toFloat()
-            Result.success(Unit)
         }
 
-    override fun getVolume(callback: (Result<Double>) -> Unit) = runOnController(callback) {
-        Result.success(it.volume.toDouble())
+    override fun getVolume(callback: (Result<Double>) -> Unit) {
+        if (controllerFuture == null) {
+            callback(Result.success(DEFAULT_VOLUME))
+            return
+        }
+        runOnController(callback, DEFAULT_VOLUME) {
+            Result.success(it.volume.toDouble())
+        }
     }
 
-    override fun nextSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        PlaybackService.latestMetadata = null
-        it.seekToNextMediaItem()
-        Result.success(Unit)
-    }
+    override fun nextSource(callback: (Result<Unit>) -> Unit) =
+        runIfInitialized("nextSource", callback) {
+            it.seekToNextMediaItem()
+        }
 
-    override fun previousSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        PlaybackService.latestMetadata = null
-        it.seekToPreviousMediaItem()
-        Result.success(Unit)
-    }
+    override fun previousSource(callback: (Result<Unit>) -> Unit) =
+        runIfInitialized("previousSource", callback) {
+            it.seekToPreviousMediaItem()
+        }
 
     override fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit) =
-        runOnController(callback) {
-            PlaybackService.latestMetadata = null
+        runIfInitialized("jumpToSourceAtIndex", callback) {
             it.seekToDefaultPosition(index.toInt())
-            Result.success(Unit)
         }
 
     override fun dispose(callback: (Result<Unit>) -> Unit) {
         releaseController()
-        applicationContext?.let {
-            it.stopService(Intent(it, PlaybackService::class.java))
+        if (!PlaybackService.shutdown()) {
+            applicationContext?.let {
+                it.stopService(Intent(it, PlaybackService::class.java))
+            }
         }
+        RadioStateStore.reset()
         callback(Result.success(Unit))
+    }
+
+    override fun getState(callback: (Result<RadioPlayerStateMessage>) -> Unit) {
+        callback(Result.success(RadioStateStore.snapshot()))
+    }
+
+    private fun playFromCurrentState(controller: MediaController) {
+        RadioStateStore.clearError()
+        if (controller.mediaItemCount > 0 && controller.playbackState == Player.STATE_IDLE) {
+            controller.prepare()
+        }
+        controller.play()
+    }
+
+    private fun runIfInitialized(
+        method: String,
+        callback: (Result<Unit>) -> Unit,
+        block: (MediaController) -> Unit,
+    ) {
+        if (controllerFuture == null) {
+            Log.w(LOG_TAG, "$method() called before initialize(); ignored")
+            callback(Result.success(Unit))
+            return
+        }
+        runOnController(callback, Unit) {
+            block(it)
+            Result.success(Unit)
+        }
     }
 
     private fun <T> runOnController(
         callback: (Result<T>) -> Unit,
+        supersededResult: T,
         block: (MediaController) -> Result<T>,
     ) {
         val future = controllerFuture
@@ -175,6 +180,8 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
                 } else {
                     block(controller)
                 }
+            } catch (_: CancellationException) {
+                Result.success(supersededResult)
             } catch (t: Throwable) {
                 Result.failure(toFlutterError(t))
             }
@@ -213,44 +220,14 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
     }
 
     private fun setupEventChannels(binding: FlutterPlugin.FlutterPluginBinding) {
-        OnPlaybackStateChangedStreamHandler.register(
+        OnStateChangedStreamHandler.register(
             binding.binaryMessenger,
-            object : OnPlaybackStateChangedStreamHandler() {
-                override fun onListen(arguments: Any?, sink: PigeonEventSink<Boolean>) {
-                    playbackStateSink = sink
-                    PlaybackService.playbackStateSink = sink
+            object : OnStateChangedStreamHandler() {
+                override fun onListen(arguments: Any?, sink: PigeonEventSink<RadioPlayerStateMessage>) {
+                    RadioStateStore.attachSink(sink)
                 }
                 override fun onCancel(arguments: Any?) {
-                    playbackStateSink = null
-                    PlaybackService.playbackStateSink = null
-                }
-            }
-        )
-
-        OnNowPlayingChangedStreamHandler.register(
-            binding.binaryMessenger,
-            object : OnNowPlayingChangedStreamHandler() {
-                override fun onListen(arguments: Any?, sink: PigeonEventSink<NowPlayingInfoMessage>) {
-                    nowPlayingSink = sink
-                    PlaybackService.nowPlayingSink = sink
-                }
-                override fun onCancel(arguments: Any?) {
-                    nowPlayingSink = null
-                    PlaybackService.nowPlayingSink = null
-                }
-            }
-        )
-
-        OnVolumeChangedStreamHandler.register(
-            binding.binaryMessenger,
-            object : OnVolumeChangedStreamHandler() {
-                override fun onListen(arguments: Any?, sink: PigeonEventSink<VolumeInfoMessage>) {
-                    volumeSink = sink
-                    PlaybackService.volumeSink = sink
-                }
-                override fun onCancel(arguments: Any?) {
-                    volumeSink = null
-                    PlaybackService.volumeSink = null
+                    RadioStateStore.detachSink()
                 }
             }
         )

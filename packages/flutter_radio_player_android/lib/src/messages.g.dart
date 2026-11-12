@@ -29,6 +29,24 @@ bool _deepEquals(Object? a, Object? b) {
 }
 
 
+enum PlaybackStatusMessage {
+  idle,
+  loading,
+  playing,
+  paused,
+  error,
+}
+
+enum RadioPlayerErrorCodeMessage {
+  invalidSource,
+  network,
+  httpStatus,
+  unsupportedFormat,
+  backgroundRestricted,
+  timeout,
+  unknown,
+}
+
 class RadioSourceMessage {
   RadioSourceMessage({
     required this.url,
@@ -80,33 +98,38 @@ class RadioSourceMessage {
 ;
 }
 
-class NowPlayingInfoMessage {
-  NowPlayingInfoMessage({
-    this.title,
+class RadioPlayerErrorMessage {
+  RadioPlayerErrorMessage({
+    required this.code,
+    required this.message,
   });
 
-  String? title;
+  RadioPlayerErrorCodeMessage code;
+
+  String message;
 
   List<Object?> _toList() {
     return <Object?>[
-      title,
+      code,
+      message,
     ];
   }
 
   Object encode() {
     return _toList();  }
 
-  static NowPlayingInfoMessage decode(Object result) {
+  static RadioPlayerErrorMessage decode(Object result) {
     result as List<Object?>;
-    return NowPlayingInfoMessage(
-      title: result[0] as String?,
+    return RadioPlayerErrorMessage(
+      code: result[0]! as RadioPlayerErrorCodeMessage,
+      message: result[1]! as String,
     );
   }
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! NowPlayingInfoMessage || other.runtimeType != runtimeType) {
+    if (other is! RadioPlayerErrorMessage || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -121,38 +144,53 @@ class NowPlayingInfoMessage {
 ;
 }
 
-class VolumeInfoMessage {
-  VolumeInfoMessage({
+class RadioPlayerStateMessage {
+  RadioPlayerStateMessage({
+    required this.status,
+    this.currentIndex,
+    this.nowPlayingTitle,
     required this.volume,
-    required this.isMuted,
+    this.error,
   });
+
+  PlaybackStatusMessage status;
+
+  int? currentIndex;
+
+  String? nowPlayingTitle;
 
   double volume;
 
-  bool isMuted;
+  RadioPlayerErrorMessage? error;
 
   List<Object?> _toList() {
     return <Object?>[
+      status,
+      currentIndex,
+      nowPlayingTitle,
       volume,
-      isMuted,
+      error,
     ];
   }
 
   Object encode() {
     return _toList();  }
 
-  static VolumeInfoMessage decode(Object result) {
+  static RadioPlayerStateMessage decode(Object result) {
     result as List<Object?>;
-    return VolumeInfoMessage(
-      volume: result[0]! as double,
-      isMuted: result[1]! as bool,
+    return RadioPlayerStateMessage(
+      status: result[0]! as PlaybackStatusMessage,
+      currentIndex: result[1] as int?,
+      nowPlayingTitle: result[2] as String?,
+      volume: result[3]! as double,
+      error: result[4] as RadioPlayerErrorMessage?,
     );
   }
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! VolumeInfoMessage || other.runtimeType != runtimeType) {
+    if (other is! RadioPlayerStateMessage || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -175,14 +213,20 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is RadioSourceMessage) {
+    }    else if (value is PlaybackStatusMessage) {
       buffer.putUint8(129);
-      writeValue(buffer, value.encode());
-    }    else if (value is NowPlayingInfoMessage) {
+      writeValue(buffer, value.index);
+    }    else if (value is RadioPlayerErrorCodeMessage) {
       buffer.putUint8(130);
-      writeValue(buffer, value.encode());
-    }    else if (value is VolumeInfoMessage) {
+      writeValue(buffer, value.index);
+    }    else if (value is RadioSourceMessage) {
       buffer.putUint8(131);
+      writeValue(buffer, value.encode());
+    }    else if (value is RadioPlayerErrorMessage) {
+      buffer.putUint8(132);
+      writeValue(buffer, value.encode());
+    }    else if (value is RadioPlayerStateMessage) {
+      buffer.putUint8(133);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -193,11 +237,17 @@ class _PigeonCodec extends StandardMessageCodec {
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
       case 129: 
-        return RadioSourceMessage.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : PlaybackStatusMessage.values[value];
       case 130: 
-        return NowPlayingInfoMessage.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : RadioPlayerErrorCodeMessage.values[value];
       case 131: 
-        return VolumeInfoMessage.decode(readValue(buffer)!);
+        return RadioSourceMessage.decode(readValue(buffer)!);
+      case 132: 
+        return RadioPlayerErrorMessage.decode(readValue(buffer)!);
+      case 133: 
+        return RadioPlayerStateMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -443,38 +493,43 @@ class RadioPlayerHostApi {
       return;
     }
   }
+
+  Future<RadioPlayerStateMessage> getState() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.getState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as RadioPlayerStateMessage?)!;
+    }
+  }
 }
 
-Stream<bool> onPlaybackStateChanged( {String instanceName = ''}) {
+Stream<RadioPlayerStateMessage> onStateChanged( {String instanceName = ''}) {
   if (instanceName.isNotEmpty) {
     instanceName = '.$instanceName';
   }
-  final EventChannel onPlaybackStateChangedChannel =
-      EventChannel('dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onPlaybackStateChanged$instanceName', pigeonMethodCodec);
-  return onPlaybackStateChangedChannel.receiveBroadcastStream().map((dynamic event) {
-    return event as bool;
-  });
-}
-    
-Stream<NowPlayingInfoMessage> onNowPlayingChanged( {String instanceName = ''}) {
-  if (instanceName.isNotEmpty) {
-    instanceName = '.$instanceName';
-  }
-  final EventChannel onNowPlayingChangedChannel =
-      EventChannel('dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onNowPlayingChanged$instanceName', pigeonMethodCodec);
-  return onNowPlayingChangedChannel.receiveBroadcastStream().map((dynamic event) {
-    return event as NowPlayingInfoMessage;
-  });
-}
-    
-Stream<VolumeInfoMessage> onVolumeChanged( {String instanceName = ''}) {
-  if (instanceName.isNotEmpty) {
-    instanceName = '.$instanceName';
-  }
-  final EventChannel onVolumeChangedChannel =
-      EventChannel('dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onVolumeChanged$instanceName', pigeonMethodCodec);
-  return onVolumeChangedChannel.receiveBroadcastStream().map((dynamic event) {
-    return event as VolumeInfoMessage;
+  final EventChannel onStateChangedChannel =
+      EventChannel('dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerEventApi.onStateChanged$instanceName', pigeonMethodCodec);
+  return onStateChangedChannel.receiveBroadcastStream().map((dynamic event) {
+    return event as RadioPlayerStateMessage;
   });
 }
     
