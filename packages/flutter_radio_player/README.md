@@ -167,6 +167,8 @@ Add the following permissions to your app's `AndroidManifest.xml`:
 
 > `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` are already declared by the plugin. `INTERNET` must be declared by the host app.
 
+The plugin builds with Flutter 3.50. The Android build prints a warning that the plugin applies the Kotlin Gradle Plugin and that future Flutter versions will fail to build with such plugins. The warning is expected for the 4.x line; the migration to built-in Kotlin is planned for 5.0.
+
 If your radio streams use plain HTTP (not HTTPS), also opt in to cleartext traffic with `android:usesCleartextTraffic="true"` on your `<application>` tag, or whitelist the streaming hosts with a network security config.
 
 ### iOS

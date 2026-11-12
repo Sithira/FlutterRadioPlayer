@@ -1,3 +1,75 @@
+# 4.2.0
+
+* Added `FlutterRadioPlayer.instance`, `state` and `stateStream`. The state
+  holds the playback status (idle, loading, playing, paused, error), the current
+  index and source, the now-playing title, the volume and the pending error. A
+  new `stateStream` listener first receives the latest state, then live updates.
+  `state` is eventually consistent: it reflects the last update received from
+  the platform, not the result of the last call. `FlutterRadioPlayer()` still
+  works, but every instance drives the same native player. No existing API was
+  removed, renamed or changed in meaning.
+* Added `RadioPlayerState`, `PlaybackStatus`, `RadioPlayerError` and
+  `RadioPlayerErrorCode`. Android emits the error codes `network` and
+  `unknown`; iOS emits `invalidSource`, `network` and `unknown`. The remaining
+  codes are reserved and are not emitted in 4.x.
+* Playback errors are now reported: the state moves to `error` and
+  `state.error` holds the code and a message. There is no automatic retry. A
+  user-initiated `play()` or `playOrPause()` after a failure retries the current
+  source; switching source or calling `initialize()` also clears the error.
+* `isPlayingStream`, `nowPlayingStream` and `volumeStream` are now derived from
+  the state. They are single shared streams, so several listeners at once work.
+  They no longer emit the same value twice in a row and, as before, they do not
+  replay the latest value to new listeners. They keep their per-platform
+  meaning (on iOS `isPlayingStream` is `true` while buffering, on Android only
+  while audio is playing).
+* `dispose()` followed by `initialize()` now works repeatedly on both platforms.
+* `play()`, `pause()`, `playOrPause()`, `nextSource()`, `previousSource()` and
+  `jumpToSourceAtIndex()` called before `initialize()` or after `dispose()` are
+  ignored and now log a warning. `initialize()` does not need to be awaited
+  before the next call.
+* Android: the playback controller and service are created by `initialize()`
+  instead of when the plugin attaches to the engine.
+* Android: `dispose()` stops the playback service and the notification, and the
+  state returns to idle. A `dispose()` issued while `initialize()` is still
+  connecting completes quietly.
+* Android: the notification's content intent is now built in the service from
+  the app's launcher intent, so tapping the notification opens the launcher
+  activity (before, the Activity that was attached at the time). This avoids a
+  possible crash when the service starts without an Activity.
+* Android: playback pauses when headphones are unplugged (iOS already did).
+* Android: `setVolume()` before `initialize()` is ignored and logged. It never
+  took effect before either, because `initialize()` resets the volume to 0.5.
+* iOS: the audio session is no longer activated when the plugin registers or on
+  `initialize()`, only when playback starts, so other apps' audio is not
+  interrupted at launch.
+* iOS: `dispose()` followed by `initialize()` restores state updates and the
+  lock-screen controls.
+* iOS: `play()` before `initialize()` used to take effect once a stream was
+  loaded; it is now ignored. `setVolume()` before `initialize()` still works.
+* iOS: a source without artwork no longer shows the previous source's artwork,
+  and artwork from a slow download no longer lands on a later source.
+* iOS: after an audio interruption (call, Siri) playback resumes only if it was
+  active before the interruption.
+* iOS: switching to an invalid source (unparsable URL or one without a scheme)
+  moves to that entry, stops the previous stream and reports `invalidSource`
+  instead of silently continuing the old stream.
+* `initialize([])` leaves the player with no sources: the current stream stops,
+  the state is idle, and on iOS the lock-screen info is cleared. On Android this
+  replaces the old behaviour of pausing and keeping the previous list.
+* iOS: `isPlayingStream` no longer reports `true` while the player waits with
+  nothing loaded.
+* iOS: `dispose()` without a prior `initialize()` no longer clears the system
+  now-playing info.
+* Platform interface: added `state` and `stateStream` to
+  `FlutterRadioPlayerPlatform`. They throw `UnimplementedError` by default, so
+  existing platform implementations keep working.
+* Docs: added a "Player state" section (state, errors, legacy streams, call
+  ordering); corrected the Android permission note (`INTERNET` must be declared
+  by the app), the `compileSdk` value in the migration guide and the example
+  link.
+* Examples are driven from `stateStream`; CI now builds the example for
+  Android and iOS.
+
 # 4.1.0
 
 * Converted all HostApi methods to Pigeon `@async`; platform calls now wait for
