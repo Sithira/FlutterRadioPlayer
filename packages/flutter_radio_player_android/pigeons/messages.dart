@@ -14,13 +14,29 @@ class RadioSourceMessage {
   late String? artwork;
 }
 
-class NowPlayingInfoMessage {
-  late String? title;
+enum PlaybackStatusMessage { idle, loading, playing, paused, error }
+
+enum RadioPlayerErrorCodeMessage {
+  invalidSource,
+  network,
+  httpStatus,
+  unsupportedFormat,
+  backgroundRestricted,
+  timeout,
+  unknown,
 }
 
-class VolumeInfoMessage {
+class RadioPlayerErrorMessage {
+  late RadioPlayerErrorCodeMessage code;
+  late String message;
+}
+
+class RadioPlayerStateMessage {
+  late PlaybackStatusMessage status;
+  late int? currentIndex;
+  late String? nowPlayingTitle;
   late double volume;
-  late bool isMuted;
+  late RadioPlayerErrorMessage? error;
 }
 
 @HostApi()
@@ -45,11 +61,11 @@ abstract class RadioPlayerHostApi {
   void jumpToSourceAtIndex(int index);
   @async
   void dispose();
+  @async
+  RadioPlayerStateMessage getState();
 }
 
 @EventChannelApi()
 abstract class RadioPlayerEventApi {
-  bool onPlaybackStateChanged();
-  NowPlayingInfoMessage onNowPlayingChanged();
-  VolumeInfoMessage onVolumeChanged();
+  RadioPlayerStateMessage onStateChanged();
 }
