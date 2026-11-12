@@ -104,4 +104,20 @@ abstract class FlutterRadioPlayerPlatform extends PlatformInterface {
   Stream<VolumeInfo> get volumeStream {
     throw UnimplementedError('volumeStream has not been implemented.');
   }
+
+  /// The latest snapshot of the player state.
+  ///
+  /// The value is eventually consistent: it reflects the most recent snapshot
+  /// received from the platform, not the result of the last call.
+  RadioPlayerState get state {
+    throw UnimplementedError('state has not been implemented.');
+  }
+
+  /// A stream of [RadioPlayerState] snapshots.
+  ///
+  /// Every new listener first receives the latest snapshot, if one has arrived,
+  /// followed by live updates.
+  Stream<RadioPlayerState> get stateStream {
+    throw UnimplementedError('stateStream has not been implemented.');
+  }
 }

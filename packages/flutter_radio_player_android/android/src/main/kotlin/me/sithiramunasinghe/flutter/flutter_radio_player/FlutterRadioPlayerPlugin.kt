@@ -97,7 +97,6 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
         controller.volume = 0.5F
         controller.playWhenReady = playWhenReady
         if (sources.isNotEmpty()) {
-            PlaybackService.latestMetadata = null
             controller.setMediaItems(sources.map { buildMediaItem(it) })
             controller.prepare()
         }
@@ -132,20 +131,17 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, ActivityAware, RadioPlayerHostAp
     }
 
     override fun nextSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        PlaybackService.latestMetadata = null
         it.seekToNextMediaItem()
         Result.success(Unit)
     }
 
     override fun previousSource(callback: (Result<Unit>) -> Unit) = runOnController(callback) {
-        PlaybackService.latestMetadata = null
         it.seekToPreviousMediaItem()
         Result.success(Unit)
     }
 
     override fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit) =
         runOnController(callback) {
-            PlaybackService.latestMetadata = null
             it.seekToDefaultPosition(index.toInt())
             Result.success(Unit)
         }

@@ -3,7 +3,14 @@
 library flutter_radio_player;
 
 export 'package:flutter_radio_player_platform_interface/flutter_radio_player_platform_interface.dart'
-    show RadioSource, NowPlayingInfo, VolumeInfo;
+    show
+        RadioSource,
+        NowPlayingInfo,
+        VolumeInfo,
+        RadioPlayerState,
+        PlaybackStatus,
+        RadioPlayerError,
+        RadioPlayerErrorCode;
 
 import 'package:flutter_radio_player_platform_interface/flutter_radio_player_platform_interface.dart';
 
@@ -17,6 +24,12 @@ import 'package:flutter_radio_player_platform_interface/flutter_radio_player_pla
 /// ], playWhenReady: true);
 /// ```
 class FlutterRadioPlayer {
+  /// A shared instance for convenience.
+  ///
+  /// All instances drive the same native player, so this is not a way to
+  /// isolate players from each other.
+  static final FlutterRadioPlayer instance = FlutterRadioPlayer();
+
   FlutterRadioPlayerPlatform get _platform =>
       FlutterRadioPlayerPlatform.instance;
 
@@ -69,4 +82,18 @@ class FlutterRadioPlayer {
 
   /// A stream of [VolumeInfo] updates when the volume changes.
   Stream<VolumeInfo> get volumeStream => _platform.volumeStream;
+
+  /// The latest snapshot of the player state.
+  ///
+  /// Before any snapshot has arrived this is an idle state. The value is
+  /// eventually consistent: it reflects the most recent snapshot received from
+  /// the platform, not the result of the last call. Use [stateStream] to react
+  /// to changes.
+  RadioPlayerState get state => _platform.state;
+
+  /// A stream of [RadioPlayerState] snapshots.
+  ///
+  /// Every new listener first receives the latest snapshot, if one has arrived,
+  /// followed by live updates.
+  Stream<RadioPlayerState> get stateStream => _platform.stateStream;
 }

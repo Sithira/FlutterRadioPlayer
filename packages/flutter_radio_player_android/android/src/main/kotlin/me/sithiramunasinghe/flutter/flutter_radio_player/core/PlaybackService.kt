@@ -30,7 +30,6 @@ class PlaybackService : MediaLibraryService() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
-        var latestMetadata: MediaMetadata? = null
         var playbackStateSink: PigeonEventSink<Boolean>? = null
         var nowPlayingSink: PigeonEventSink<NowPlayingInfoMessage>? = null
         var volumeSink: PigeonEventSink<VolumeInfoMessage>? = null
@@ -105,14 +104,12 @@ class PlaybackService : MediaLibraryService() {
                         mainHandler.post {
                             nowPlayingSink?.success(NowPlayingInfoMessage(title = entry.title))
                         }
-                        latestMetadata = null
                         return
                     }
                 }
             }
 
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                latestMetadata = mediaMetadata
                 val title = mediaMetadata.title?.toString() ?: return
                 mainHandler.post {
                     nowPlayingSink?.success(NowPlayingInfoMessage(title = title))
