@@ -82,18 +82,19 @@ const _sources = [
 void main() {
   late FakeHostApi hostApi;
   late StreamController<RadioPlayerStateMessage> events;
-  late int subscriptions;
+  late int nativeSubscriptions;
   late FlutterRadioPlayerAndroid player;
 
   setUp(() {
     hostApi = FakeHostApi();
-    subscriptions = 0;
-    events = StreamController<RadioPlayerStateMessage>.broadcast(
-      onListen: () => subscriptions++,
-    );
+    nativeSubscriptions = 0;
+    events = StreamController<RadioPlayerStateMessage>.broadcast();
     player = FlutterRadioPlayerAndroid(
       hostApi: hostApi,
-      stateEvents: () => events.stream,
+      stateEvents: () {
+        nativeSubscriptions++;
+        return events.stream;
+      },
     );
   });
 
@@ -214,12 +215,12 @@ void main() {
       player.volumeStream.listen((_) {});
       await player.initialize(_sources);
       expect(player.state, const RadioPlayerState());
-      expect(subscriptions, 1);
+      expect(nativeSubscriptions, 1);
     });
 
     test('is the same stream object on every access', () {
       expect(identical(player.stateStream, player.stateStream), isTrue);
-      expect(identical(player.isPlayingStream, player.isPlayingStream), isTrue);
+      expect(player.stateStream.isBroadcast, isTrue);
     });
 
     test('cancelling one listener keeps the other receiving', () async {
@@ -267,6 +268,18 @@ void main() {
   });
 
   group('legacy streams', () {
+    test('are cached broadcast streams', () {
+      expect(identical(player.isPlayingStream, player.isPlayingStream), isTrue);
+      expect(
+        identical(player.nowPlayingStream, player.nowPlayingStream),
+        isTrue,
+      );
+      expect(identical(player.volumeStream, player.volumeStream), isTrue);
+      expect(player.isPlayingStream.isBroadcast, isTrue);
+      expect(player.nowPlayingStream.isBroadcast, isTrue);
+      expect(player.volumeStream.isBroadcast, isTrue);
+    });
+
     test('two listeners behave the same and none replays', () async {
       player.stateStream.listen((_) {});
       events.add(_message());
@@ -325,8 +338,7 @@ void main() {
       expect(volumes, isEmpty);
     });
 
-    test('loading emits nothing on isPlayingStream, playing emits true',
-        () async {
+    test('loading and playing on isPlayingStream', () async {
       final playing = <bool>[];
       player.isPlayingStream.listen(playing.add);
       events.add(_message(status: PlaybackStatusMessage.paused));
@@ -338,6 +350,32 @@ void main() {
       events.add(_message(status: PlaybackStatusMessage.paused));
       await pump();
       expect(playing, [true, false]);
+    });
+
+    test('a later playing snapshot emits true', () async {
+      final playing = <bool>[];
+      player.isPlayingStream.listen(playing.add);
+      events.add(_message(status: PlaybackStatusMessage.paused));
+      events.add(_message(status: PlaybackStatusMessage.playing));
+      await pump();
+      expect(playing, [true]);
+    });
+
+    test('an error snapshot counts as not playing', () async {
+      final playing = <bool>[];
+      player.isPlayingStream.listen(playing.add);
+      events.add(_message(status: PlaybackStatusMessage.playing));
+      events.add(
+        _message(
+          status: PlaybackStatusMessage.error,
+          error: RadioPlayerErrorMessage(
+            code: RadioPlayerErrorCodeMessage.network,
+            message: 'offline',
+          ),
+        ),
+      );
+      await pump();
+      expect(playing, [false]);
     });
 
     test('title null then X emits twice and a repeated X once', () async {
@@ -362,6 +400,11 @@ void main() {
   });
 
   group('dispose', () {
+    test('calls the host api then refreshes the state', () async {
+      await player.dispose();
+      expect(hostApi.calls, ['dispose', 'getState']);
+    });
+
     test('clears sources and refreshes the cached state', () async {
       await player.initialize(_sources);
       events.add(

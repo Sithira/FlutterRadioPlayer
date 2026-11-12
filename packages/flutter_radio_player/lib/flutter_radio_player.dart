@@ -45,27 +45,57 @@ class FlutterRadioPlayer {
   }
 
   /// Starts or resumes playback of the current source.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> play() => _platform.play();
 
   /// Pauses playback.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> pause() => _platform.pause();
 
   /// Toggles between play and pause.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> playOrPause() => _platform.playOrPause();
 
   /// Sets the playback volume to [volume], a value between 0.0 and 1.0.
+  ///
+  /// On iOS the volume is always applied; before [initialize] it is remembered
+  /// and used when the player is created. On Android a volume set before
+  /// [initialize] or after [dispose] is ignored and logged as a warning, and
+  /// [initialize] resets the volume to 0.5. [initialize] does not need to be
+  /// awaited before this call.
   Future<void> setVolume(double volume) => _platform.setVolume(volume);
 
   /// Returns the current playback volume (0.0 to 1.0).
   Future<double> getVolume() => _platform.getVolume();
 
   /// Advances to the next source in the playlist.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> nextSource() => _platform.nextSource();
 
   /// Returns to the previous source in the playlist.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> previousSource() => _platform.previousSource();
 
   /// Jumps to the source at the given [index] in the playlist.
+  ///
+  /// Calls made before [initialize] or after [dispose] are ignored and logged
+  /// as a warning on the native side. [initialize] does not need to be awaited
+  /// before this call.
   Future<void> jumpToSourceAtIndex(int index) =>
       _platform.jumpToSourceAtIndex(index);
 
@@ -75,12 +105,24 @@ class FlutterRadioPlayer {
   Future<void> dispose() => _platform.dispose();
 
   /// A stream that emits `true` when playback starts and `false` when it stops.
+  ///
+  /// Superseded by [stateStream], which carries the same information and more.
+  /// Unlike [stateStream] it does not replay the latest value to new listeners
+  /// and never emits the same value twice in a row.
   Stream<bool> get isPlayingStream => _platform.isPlayingStream;
 
   /// A stream of [NowPlayingInfo] updates, including ICY metadata titles.
+  ///
+  /// Superseded by [stateStream] (see [RadioPlayerState.nowPlaying]). Unlike
+  /// [stateStream] it does not replay the latest value to new listeners and
+  /// never emits the same title twice in a row.
   Stream<NowPlayingInfo> get nowPlayingStream => _platform.nowPlayingStream;
 
   /// A stream of [VolumeInfo] updates when the volume changes.
+  ///
+  /// Superseded by [stateStream] (see [RadioPlayerState.volume]). Unlike
+  /// [stateStream] it does not replay the latest value to new listeners and
+  /// never emits the same volume twice in a row.
   Stream<VolumeInfo> get volumeStream => _platform.volumeStream;
 
   /// The latest snapshot of the player state.

@@ -48,8 +48,7 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  final _player = FlutterRadioPlayer();
-  int _currentSourceIndex = 0;
+  final _player = FlutterRadioPlayer.instance;
   double _volume = 0.5;
 
   @override
@@ -64,9 +63,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
-  void _onSourceTap(int index) {
-    setState(() => _currentSourceIndex = index);
-    _player.jumpToSourceAtIndex(index);
+  void _jumpBy(RadioPlayerState state, int offset) {
+    final current = state.currentIndex ?? 0;
+    final target = (current + offset + _sources.length) % _sources.length;
+    _player.jumpToSourceAtIndex(target);
   }
 
   @override
@@ -75,38 +75,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 32),
-            // Artwork
-            Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(
-                Icons.radio,
-                size: 80,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
+        child: StreamBuilder<RadioPlayerState>(
+          initialData: _player.state,
+          stream: _player.stateStream,
+          builder: (context, snapshot) {
+            final state = snapshot.requireData;
+            final isPlaying = state.status == PlaybackStatus.playing ||
+                state.status == PlaybackStatus.loading;
+            final activeIndex = state.currentIndex;
+            final stationTitle = state.currentSource?.title ?? 'Live Radio';
+            final error = state.error;
 
-            // Now playing title
-            StreamBuilder<NowPlayingInfo>(
-              stream: _player.nowPlayingStream,
-              builder: (context, snapshot) {
-                final title = snapshot.data?.title ??
-                    _sources[_currentSourceIndex].title ??
-                    'Unknown Station';
-                return Padding(
+            return Column(
+              children: [
+                const SizedBox(height: 32),
+                Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Icon(
+                    Icons.radio,
+                    size: 80,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Column(
                     children: [
                       Text(
-                        title,
+                        state.nowPlaying?.title ?? stationTitle,
                         style: Theme.of(context).textTheme.titleLarge,
                         textAlign: TextAlign.center,
                         maxLines: 2,
@@ -114,33 +116,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _sources[_currentSourceIndex].title ?? 'Live Radio',
+                        stationTitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
                       ),
+                      if (error != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${error.code.name}: ${error.message}',
+                          style: TextStyle(color: colorScheme.error),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ],
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 32),
-
-            // Transport controls
-            StreamBuilder<bool>(
-              stream: _player.isPlayingStream,
-              builder: (context, snapshot) {
-                final isPlaying = snapshot.data ?? false;
-                return Row(
+                ),
+                const SizedBox(height: 32),
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
                       iconSize: 36,
-                      onPressed: () {
-                        final prev = (_currentSourceIndex - 1 + _sources.length) %
-                            _sources.length;
-                        _onSourceTap(prev);
-                      },
+                      onPressed: () => _jumpBy(state, -1),
                       icon: const Icon(Icons.skip_previous_rounded),
                     ),
                     const SizedBox(width: 16),
@@ -161,96 +159,88 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     const SizedBox(width: 16),
                     IconButton(
                       iconSize: 36,
-                      onPressed: () {
-                        final next =
-                            (_currentSourceIndex + 1) % _sources.length;
-                        _onSourceTap(next);
-                      },
+                      onPressed: () => _jumpBy(state, 1),
                       icon: const Icon(Icons.skip_next_rounded),
                     ),
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Volume slider
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Row(
-                children: [
-                  Icon(Icons.volume_down_rounded,
-                      color: colorScheme.onSurfaceVariant),
-                  Expanded(
-                    child: Slider(
-                      value: _volume,
-                      onChanged: (value) {
-                        setState(() => _volume = value);
-                        _player.setVolume(value);
-                      },
-                    ),
-                  ),
-                  Icon(Icons.volume_up_rounded,
-                      color: colorScheme.onSurfaceVariant),
-                ],
-              ),
-            ),
-
-            const Spacer(),
-
-            // Source list
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, bottom: 8),
-                    child: Text(
-                      'STATIONS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            letterSpacing: 1.5,
-                          ),
-                    ),
-                  ),
-                  ...List.generate(_sources.length, (index) {
-                    final source = _sources[index];
-                    final isActive = index == _currentSourceIndex;
-                    return ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      selected: isActive,
-                      selectedTileColor:
-                          colorScheme.primaryContainer.withValues(alpha: 0.3),
-                      leading: CircleAvatar(
-                        backgroundColor: isActive
-                            ? colorScheme.primary
-                            : colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          isActive
-                              ? Icons.equalizer_rounded
-                              : Icons.radio_rounded,
-                          color: isActive
-                              ? colorScheme.onPrimary
-                              : colorScheme.onSurfaceVariant,
-                          size: 20,
+                ),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Row(
+                    children: [
+                      Icon(Icons.volume_down_rounded,
+                          color: colorScheme.onSurfaceVariant),
+                      Expanded(
+                        child: Slider(
+                          value: _volume,
+                          onChanged: (value) {
+                            setState(() => _volume = value);
+                            _player.setVolume(value);
+                          },
                         ),
                       ),
-                      title: Text(source.title ?? source.url),
-                      subtitle: isActive
-                          ? Text('Now playing',
-                              style: TextStyle(color: colorScheme.primary))
-                          : null,
-                      onTap: () => _onSourceTap(index),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+                      Icon(Icons.volume_up_rounded,
+                          color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, bottom: 8),
+                        child: Text(
+                          'STATIONS',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    letterSpacing: 1.5,
+                                  ),
+                        ),
+                      ),
+                      ...List.generate(_sources.length, (index) {
+                        final source = _sources[index];
+                        final isActive = index == activeIndex;
+                        return ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          selected: isActive,
+                          selectedTileColor: colorScheme.primaryContainer
+                              .withValues(alpha: 0.3),
+                          leading: CircleAvatar(
+                            backgroundColor: isActive
+                                ? colorScheme.primary
+                                : colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              isActive
+                                  ? Icons.equalizer_rounded
+                                  : Icons.radio_rounded,
+                              color: isActive
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(source.title ?? source.url),
+                          subtitle: isActive
+                              ? Text('Now playing',
+                                  style: TextStyle(color: colorScheme.primary))
+                              : null,
+                          onTap: () => _player.jumpToSourceAtIndex(index),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
         ),
       ),
     );

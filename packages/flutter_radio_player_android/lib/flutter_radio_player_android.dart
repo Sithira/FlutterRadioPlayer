@@ -15,8 +15,11 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
   final RadioPlayerHostApi _hostApi;
   final Stream<RadioPlayerStateMessage> Function() _stateEvents;
 
-  final StreamController<RadioPlayerState> _stateController =
-      StreamController<RadioPlayerState>.broadcast();
+  StreamSubscription<RadioPlayerStateMessage>? _stateSubscription;
+  List<RadioSource> _sources = const [];
+  RadioPlayerState? _latest;
+
+  final Set<MultiStreamController<RadioPlayerState>> _stateListeners = {};
   final StreamController<bool> _isPlayingController =
       StreamController<bool>.broadcast();
   final StreamController<NowPlayingInfo> _nowPlayingController =
@@ -25,79 +28,24 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
       StreamController<VolumeInfo>.broadcast();
 
   late final Stream<RadioPlayerState> _stateStream =
-      Stream<RadioPlayerState>.multi((controller) {
-    final latest = _latest;
-    if (latest != null) {
-      controller.add(latest);
-    }
-    final subscription = _stateController.stream.listen(
-      controller.add,
-      onError: controller.addError,
-    );
-    controller.onCancel = subscription.cancel;
-  }, isBroadcast: true);
-
+      Stream<RadioPlayerState>.multi(
+    (controller) {
+      final latest = _latest;
+      if (latest != null) {
+        controller.add(latest);
+      }
+      _stateListeners.add(controller);
+      controller.onCancel = () => _stateListeners.remove(controller);
+    },
+    isBroadcast: true,
+  );
   late final Stream<bool> _isPlayingStream = _isPlayingController.stream;
   late final Stream<NowPlayingInfo> _nowPlayingStream =
       _nowPlayingController.stream;
   late final Stream<VolumeInfo> _volumeStream = _volumeController.stream;
 
-  StreamSubscription<RadioPlayerStateMessage>? _subscription;
-  List<RadioSource> _sources = const [];
-  RadioPlayerState? _latest;
-
   static void registerWith() {
     FlutterRadioPlayerPlatform.instance = FlutterRadioPlayerAndroid();
-  }
-
-  void _ensureSubscribed() {
-    _subscription ??= _stateEvents().listen(
-      _onMessage,
-      onError: _stateController.addError,
-    );
-  }
-
-  void _onMessage(RadioPlayerStateMessage message) {
-    final previous = _latest;
-    final next = _toState(message);
-    _latest = next;
-    _stateController.add(next);
-    if (previous == null) {
-      return;
-    }
-    if ((previous.status == PlaybackStatus.playing) !=
-        (next.status == PlaybackStatus.playing)) {
-      _isPlayingController.add(next.status == PlaybackStatus.playing);
-    }
-    if (previous.nowPlaying?.title != next.nowPlaying?.title) {
-      _nowPlayingController.add(NowPlayingInfo(title: next.nowPlaying?.title));
-    }
-    if (previous.volume != next.volume) {
-      _volumeController.add(
-        VolumeInfo(volume: next.volume, isMuted: next.volume == 0),
-      );
-    }
-  }
-
-  RadioPlayerState _toState(RadioPlayerStateMessage message) {
-    final index = message.currentIndex;
-    final title = message.nowPlayingTitle;
-    final error = message.error;
-    return RadioPlayerState(
-      status: PlaybackStatus.values.byName(message.status.name),
-      currentIndex: index,
-      currentSource: index != null && index >= 0 && index < _sources.length
-          ? _sources[index]
-          : null,
-      nowPlaying: title == null ? null : NowPlayingInfo(title: title),
-      volume: message.volume,
-      error: error == null
-          ? null
-          : RadioPlayerError(
-              code: RadioPlayerErrorCode.values.byName(error.code.name),
-              message: error.message,
-            ),
-    );
   }
 
   @override
@@ -142,7 +90,28 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
   Future<void> dispose() async {
     await _hostApi.dispose();
     _sources = const [];
-    _onMessage(await _hostApi.getState());
+    _onStateMessage(await _hostApi.getState());
+  }
+
+  /// The latest known player state.
+  ///
+  /// This is eventually consistent: it reflects the last snapshot received
+  /// from the native side, which may lag behind a command that has just been
+  /// dispatched.
+  @override
+  RadioPlayerState get state {
+    _ensureSubscribed();
+    return _latest ?? const RadioPlayerState();
+  }
+
+  /// A broadcast stream of player state snapshots.
+  ///
+  /// Every new listener first receives the latest snapshot, if one has arrived,
+  /// followed by live updates.
+  @override
+  Stream<RadioPlayerState> get stateStream {
+    _ensureSubscribed();
+    return _stateStream;
   }
 
   @override
@@ -163,16 +132,70 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
     return _volumeStream;
   }
 
-  @override
-  RadioPlayerState get state {
-    _ensureSubscribed();
-    return _latest ?? const RadioPlayerState();
+  void _ensureSubscribed() {
+    _stateSubscription ??= _stateEvents().listen(
+      _onStateMessage,
+      onError: _onStateError,
+    );
   }
 
-  @override
-  Stream<RadioPlayerState> get stateStream {
-    _ensureSubscribed();
-    return _stateStream;
+  void _onStateError(Object error, StackTrace stackTrace) {
+    for (final listener in _stateListeners.toList()) {
+      listener.addError(error, stackTrace);
+    }
+  }
+
+  void _onStateMessage(RadioPlayerStateMessage message) {
+    final previous = _latest;
+    final current = _toState(message);
+    _latest = current;
+
+    for (final listener in _stateListeners.toList()) {
+      listener.add(current);
+    }
+
+    if (previous == null) {
+      return;
+    }
+
+    final wasPlaying = _isPlaying(previous);
+    final isPlaying = _isPlaying(current);
+    if (wasPlaying != isPlaying) {
+      _isPlayingController.add(isPlaying);
+    }
+    if (previous.nowPlaying?.title != current.nowPlaying?.title) {
+      _nowPlayingController
+          .add(NowPlayingInfo(title: current.nowPlaying?.title));
+    }
+    if (previous.volume != current.volume) {
+      _volumeController.add(
+        VolumeInfo(volume: current.volume, isMuted: current.volume == 0),
+      );
+    }
+  }
+
+  static bool _isPlaying(RadioPlayerState state) =>
+      state.status == PlaybackStatus.playing;
+
+  RadioPlayerState _toState(RadioPlayerStateMessage message) {
+    final index = message.currentIndex;
+    final title = message.nowPlayingTitle;
+    final error = message.error;
+    return RadioPlayerState(
+      status: PlaybackStatus.values.byName(message.status.name),
+      currentIndex: index,
+      currentSource: index != null && index >= 0 && index < _sources.length
+          ? _sources[index]
+          : null,
+      nowPlaying: title == null ? null : NowPlayingInfo(title: title),
+      volume: message.volume,
+      error: error == null
+          ? null
+          : RadioPlayerError(
+              code: RadioPlayerErrorCode.values.byName(error.code.name),
+              message: error.message,
+            ),
+    );
   }
 
   static RadioSourceMessage _toMessage(RadioSource source) {

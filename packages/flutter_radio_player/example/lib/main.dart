@@ -7,7 +7,8 @@ const _sources = [
     title: 'Antenne Chillout',
   ),
   RadioSource(
-    url: 'https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https',
+    url:
+        'https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https',
     title: 'SunFM - Sri Lanka',
   ),
 ];
@@ -42,7 +43,7 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  final _player = FlutterRadioPlayer();
+  final _player = FlutterRadioPlayer.instance;
   double _volume = 0.5;
 
   @override
@@ -57,33 +58,52 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
+  void _jumpBy(RadioPlayerState state, int offset) {
+    final current = state.currentIndex ?? 0;
+    final target = (current + offset + _sources.length) % _sources.length;
+    _player.jumpToSourceAtIndex(target);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Flutter Radio Player')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          StreamBuilder<NowPlayingInfo>(
-            stream: _player.nowPlayingStream,
-            builder: (context, snapshot) {
-              final title = snapshot.data?.title ?? 'No track info';
-              return Padding(
+      body: StreamBuilder<RadioPlayerState>(
+        initialData: _player.state,
+        stream: _player.stateStream,
+        builder: (context, snapshot) {
+          final state = snapshot.requireData;
+          final isPlaying = state.status == PlaybackStatus.playing ||
+              state.status == PlaybackStatus.loading;
+          final error = state.error;
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-              );
-            },
-          ),
-          StreamBuilder<bool>(
-            stream: _player.isPlayingStream,
-            builder: (context, snapshot) {
-              final isPlaying = snapshot.data ?? false;
-              return Row(
+                child: Text(
+                  state.nowPlaying?.title ??
+                      state.currentSource?.title ??
+                      'No track info',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    '${error.code.name}: ${error.message}',
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
                     iconSize: 36,
-                    onPressed: _player.previousSource,
+                    onPressed: () => _jumpBy(state, -1),
                     icon: const Icon(Icons.skip_previous_rounded),
                   ),
                   IconButton(
@@ -98,32 +118,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                   IconButton(
                     iconSize: 36,
-                    onPressed: _player.nextSource,
+                    onPressed: () => _jumpBy(state, 1),
                     icon: const Icon(Icons.skip_next_rounded),
                   ),
                 ],
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Row(
-              children: [
-                const Icon(Icons.volume_down_rounded),
-                Expanded(
-                  child: Slider(
-                    value: _volume,
-                    onChanged: (value) {
-                      setState(() => _volume = value);
-                      _player.setVolume(value);
-                    },
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Row(
+                  children: [
+                    const Icon(Icons.volume_down_rounded),
+                    Expanded(
+                      child: Slider(
+                        value: _volume,
+                        onChanged: (value) {
+                          setState(() => _volume = value);
+                          _player.setVolume(value);
+                        },
+                      ),
+                    ),
+                    const Icon(Icons.volume_up_rounded),
+                  ],
                 ),
-                const Icon(Icons.volume_up_rounded),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1,27 +1,48 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter/widgets.dart';
 import 'package:flutter_radio_player_example/main.dart';
+import 'package:flutter_radio_player_platform_interface/flutter_radio_player_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+class FakePlatform extends FlutterRadioPlayerPlatform
+    with MockPlatformInterfaceMixin {
+  final StreamController<RadioPlayerState> states =
+      StreamController<RadioPlayerState>.broadcast();
+  List<RadioSource> sources = const [];
+
+  @override
+  RadioPlayerState get state => const RadioPlayerState();
+
+  @override
+  Stream<RadioPlayerState> get stateStream => states.stream;
+
+  @override
+  Future<void> initialize(
+    List<RadioSource> sources, {
+    bool playWhenReady = false,
+  }) async {
+    this.sources = sources;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
 
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('renders the station titles', (tester) async {
+    final platform = FakePlatform();
+    FlutterRadioPlayerPlatform.instance = platform;
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(const MyApp());
 
-    // Verify that platform version is retrieved.
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) => widget is Text &&
-                           widget.data!.startsWith('Running on:'),
-      ),
-      findsOneWidget,
-    );
+    expect(platform.sources, isNotEmpty);
+    for (final source in platform.sources) {
+      expect(find.text(source.title!), findsOneWidget);
+    }
   });
 }

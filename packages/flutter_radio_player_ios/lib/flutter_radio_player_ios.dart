@@ -17,8 +17,7 @@ class FlutterRadioPlayerIos extends FlutterRadioPlayerPlatform {
 
   StreamSubscription<RadioPlayerStateMessage>? _stateSubscription;
   List<RadioSource> _sources = const [];
-  RadioPlayerState _state = const RadioPlayerState();
-  RadioPlayerState? _previousState;
+  RadioPlayerState? _latest;
 
   final Set<MultiStreamController<RadioPlayerState>> _stateListeners = {};
   final StreamController<bool> _isPlayingController =
@@ -28,22 +27,22 @@ class FlutterRadioPlayerIos extends FlutterRadioPlayerPlatform {
   final StreamController<VolumeInfo> _volumeController =
       StreamController<VolumeInfo>.broadcast();
 
-  late final Stream<bool> _isPlayingStream = _isPlayingController.stream;
-  late final Stream<NowPlayingInfo> _nowPlayingStream =
-      _nowPlayingController.stream;
-  late final Stream<VolumeInfo> _volumeStream = _volumeController.stream;
-
   late final Stream<RadioPlayerState> _stateStream =
       Stream<RadioPlayerState>.multi(
     (controller) {
-      if (_previousState != null) {
-        controller.add(_state);
+      final latest = _latest;
+      if (latest != null) {
+        controller.add(latest);
       }
       _stateListeners.add(controller);
       controller.onCancel = () => _stateListeners.remove(controller);
     },
     isBroadcast: true,
   );
+  late final Stream<bool> _isPlayingStream = _isPlayingController.stream;
+  late final Stream<NowPlayingInfo> _nowPlayingStream =
+      _nowPlayingController.stream;
+  late final Stream<VolumeInfo> _volumeStream = _volumeController.stream;
 
   static void registerWith() {
     FlutterRadioPlayerPlatform.instance = FlutterRadioPlayerIos();
@@ -102,7 +101,7 @@ class FlutterRadioPlayerIos extends FlutterRadioPlayerPlatform {
   @override
   RadioPlayerState get state {
     _ensureSubscribed();
-    return _state;
+    return _latest ?? const RadioPlayerState();
   }
 
   /// A broadcast stream of player state snapshots.
@@ -134,14 +133,22 @@ class FlutterRadioPlayerIos extends FlutterRadioPlayerPlatform {
   }
 
   void _ensureSubscribed() {
-    _stateSubscription ??= _stateEvents().listen(_onStateMessage);
+    _stateSubscription ??= _stateEvents().listen(
+      _onStateMessage,
+      onError: _onStateError,
+    );
+  }
+
+  void _onStateError(Object error, StackTrace stackTrace) {
+    for (final listener in _stateListeners.toList()) {
+      listener.addError(error, stackTrace);
+    }
   }
 
   void _onStateMessage(RadioPlayerStateMessage message) {
-    final previous = _previousState;
+    final previous = _latest;
     final current = _toState(message);
-    _state = current;
-    _previousState = current;
+    _latest = current;
 
     for (final listener in _stateListeners.toList()) {
       listener.add(current);
