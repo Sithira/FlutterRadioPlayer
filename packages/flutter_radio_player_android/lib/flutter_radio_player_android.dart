@@ -17,6 +17,7 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
 
   StreamSubscription<RadioPlayerStateMessage>? _stateSubscription;
   List<RadioSource> _sources = const [];
+  RadioPlayerStateMessage? _latestMessage;
   RadioPlayerState? _latest;
 
   final Set<MultiStreamController<RadioPlayerState>> _stateListeners = {};
@@ -55,6 +56,7 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
   }) {
     _ensureSubscribed();
     _sources = List.of(sources);
+    _rederiveState();
     return _hostApi.initialize(
       sources.map(_toMessage).toList(),
       playWhenReady,
@@ -145,9 +147,28 @@ class FlutterRadioPlayerAndroid extends FlutterRadioPlayerPlatform {
     }
   }
 
+  void _rederiveState() {
+    final message = _latestMessage;
+    if (message == null) {
+      return;
+    }
+    final current = _toState(message);
+    if (current == _latest) {
+      return;
+    }
+    _latest = current;
+    for (final listener in _stateListeners.toList()) {
+      listener.add(current);
+    }
+  }
+
   void _onStateMessage(RadioPlayerStateMessage message) {
+    _latestMessage = message;
     final previous = _latest;
     final current = _toState(message);
+    if (current == previous) {
+      return;
+    }
     _latest = current;
 
     for (final listener in _stateListeners.toList()) {

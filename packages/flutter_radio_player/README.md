@@ -114,17 +114,19 @@ StreamBuilder<RadioPlayerState>(
 | `loading` | Playback was requested and is not audible yet (connecting or buffering)                  |
 | `playing` | Audio is playing                                                                         |
 | `paused`  | Sources are loaded and playback was not requested (or is suppressed)                     |
-| `error`   | A playback error is pending; cleared by the next play, source change or `initialize()`   |
+| `error`   | A playback error is pending; cleared by the next `play()` (which retries), source change or `initialize()`   |
 
 `state` is eventually consistent. It reflects the last snapshot received from the native side, not the result of the last call: the future returned by `initialize()` or `play()` completes when the command has been dispatched, not when the state has changed. Read `state` for the initial value and react to `stateStream` afterwards. Before the first snapshot arrives, `state` is an idle state with a volume of 0.5.
 
 ### Errors
 
-When `status` is `error`, `state.error` holds a `RadioPlayerError` with a `code` (`RadioPlayerErrorCode`) and a non-empty `message`. There is no automatic retry or reconnect in 4.x. On Android, `play()` prepares the player again after an error; on iOS a failed stream stays in the `error` state until you switch source or call `initialize()` again.
+When `status` is `error`, `state.error` holds a `RadioPlayerError` with a `code` (`RadioPlayerErrorCode`) and a non-empty `message`. There is no automatic retry or reconnect in 4.x. On both platforms a user-initiated `play()` or `playOrPause()` retries the current source, and the state goes `error`, `loading`, then `playing` or back to `error`. Switching source or calling `initialize()` also clears the error.
+
+A source that cannot be played at all behaves the same way: when `initialize()`, `nextSource()`, `previousSource()` or `jumpToSourceAtIndex()` selects it, `currentIndex` moves to that entry, the previous station stops, and the status is `error` (code `invalidSource` on iOS for an unparsable or scheme-less URL, `unknown` on Android in 4.x). `nextSource()`, `previousSource()` and `jumpToSourceAtIndex()` then move on normally, while `play()` retries the invalid entry and fails again.
 
 | Code                                                                 | Emitted in 4.x | Meaning                                      |
 |----------------------------------------------------------------------|----------------|----------------------------------------------|
-| `invalidSource`                                                      | iOS only       | The source URL could not be parsed           |
+| `invalidSource`                                                      | iOS only       | The source URL is unparsable or has no scheme |
 | `network`                                                            | Android, iOS   | A connectivity problem prevented playback    |
 | `unknown`                                                            | Android, iOS   | Any other failure; `message` has the details |
 | `httpStatus`, `unsupportedFormat`, `backgroundRestricted`, `timeout` | never          | Reserved, not emitted in 4.x                 |

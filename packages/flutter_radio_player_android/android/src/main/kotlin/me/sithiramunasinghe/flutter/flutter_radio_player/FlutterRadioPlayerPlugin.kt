@@ -22,6 +22,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.RadioStateStore
 import java.io.InputStream
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executor
 
 class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
@@ -63,12 +64,15 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
     ) {
         ensureController()
         RadioStateStore.clearError()
-        runOnController(callback) { controller ->
+        runOnController(callback, Unit) { controller ->
             controller.volume = 0.5F
             controller.playWhenReady = playWhenReady
             if (sources.isNotEmpty()) {
                 controller.setMediaItems(sources.map { buildMediaItem(it) })
                 controller.prepare()
+            } else {
+                controller.playWhenReady = false
+                controller.clearMediaItems()
             }
             Result.success(Unit)
         }
@@ -99,7 +103,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
             callback(Result.success(DEFAULT_VOLUME))
             return
         }
-        runOnController(callback) {
+        runOnController(callback, DEFAULT_VOLUME) {
             Result.success(it.volume.toDouble())
         }
     }
@@ -121,8 +125,10 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
 
     override fun dispose(callback: (Result<Unit>) -> Unit) {
         releaseController()
-        applicationContext?.let {
-            it.stopService(Intent(it, PlaybackService::class.java))
+        if (!PlaybackService.shutdown()) {
+            applicationContext?.let {
+                it.stopService(Intent(it, PlaybackService::class.java))
+            }
         }
         RadioStateStore.reset()
         callback(Result.success(Unit))
@@ -150,7 +156,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
             callback(Result.success(Unit))
             return
         }
-        runOnController(callback) {
+        runOnController(callback, Unit) {
             block(it)
             Result.success(Unit)
         }
@@ -158,6 +164,7 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
 
     private fun <T> runOnController(
         callback: (Result<T>) -> Unit,
+        supersededResult: T,
         block: (MediaController) -> Result<T>,
     ) {
         val future = controllerFuture
@@ -173,6 +180,8 @@ class FlutterRadioPlayerPlugin : FlutterPlugin, RadioPlayerHostApi {
                 } else {
                     block(controller)
                 }
+            } catch (_: CancellationException) {
+                Result.success(supersededResult)
             } catch (t: Throwable) {
                 Result.failure(toFlutterError(t))
             }

@@ -88,6 +88,9 @@ class RadioPlayerService: NSObject {
         lastError = nil
 
         guard !sources.isEmpty else {
+            player?.pause()
+            clearCurrentItem()
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             emitState()
             return
         }
@@ -154,7 +157,10 @@ class RadioPlayerService: NSObject {
     }
 
     func dispose() {
-        let wasSetUp = isSetUp
+        guard isSetUp else {
+            emitState()
+            return
+        }
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         nowPlayingTitle = nil
@@ -162,11 +168,9 @@ class RadioPlayerService: NSObject {
         userIntendsToPlay = false
         tearDown()
 
-        if wasSetUp {
-            try? AVAudioSession.sharedInstance().setActive(
-                false, options: .notifyOthersOnDeactivation
-            )
-        }
+        try? AVAudioSession.sharedInstance().setActive(
+            false, options: .notifyOthersOnDeactivation
+        )
         emitState()
     }
 
@@ -196,8 +200,8 @@ class RadioPlayerService: NSObject {
         )
         return RadioPlayerStateMessage(
             status: status,
-            currentIndex: hasCurrentItem && !sources.isEmpty ? Int64(currentIndex) : nil,
-            nowPlayingTitle: nowPlayingTitle,
+            currentIndex: !sources.isEmpty && (hasCurrentItem || error != nil) ? Int64(currentIndex) : nil,
+            nowPlayingTitle: hasCurrentItem ? nowPlayingTitle : nil,
             volume: Double(volume),
             error: error
         )
@@ -266,12 +270,30 @@ class RadioPlayerService: NSObject {
 
     private func startPlayback() {
         userIntendsToPlay = true
-        if lastError != nil {
+        if shouldReloadCurrentSource() {
+            guard loadSource(at: currentIndex) else { return }
+        } else if lastError != nil {
             lastError = nil
             emitState()
         }
         try? AVAudioSession.sharedInstance().setActive(true)
         player?.play()
+    }
+
+    private func shouldReloadCurrentSource() -> Bool {
+        guard currentIndex >= 0, currentIndex < sources.count else { return false }
+        if player?.currentItem?.status == .failed { return true }
+        return lastError != nil
+    }
+
+    private func clearCurrentItem() {
+        statusObservation?.invalidate()
+        statusObservation = nil
+        metadataOutput = nil
+        cancelArtworkLoad()
+        currentArtwork = nil
+        nowPlayingTitle = nil
+        player?.replaceCurrentItem(with: nil)
     }
 
     private func cancelArtworkLoad() {
@@ -319,20 +341,21 @@ class RadioPlayerService: NSObject {
     private func loadSource(at index: Int) -> Bool {
         let source = sources[index]
 
+        currentIndex = index
+        clearCurrentItem()
+
         guard let url = URL(string: source.url), let scheme = url.scheme, !scheme.isEmpty else {
             lastError = RadioPlayerErrorMessage(
                 code: .invalidSource,
                 message: "Invalid source URL: \(source.url)"
             )
+            updateNowPlayingInfo(title: source.title)
+            loadArtwork(for: source)
             emitState()
             return false
         }
 
-        currentIndex = index
         lastError = nil
-        statusObservation?.invalidate()
-        cancelArtworkLoad()
-        currentArtwork = nil
 
         let item = AVPlayerItem(url: url)
         setupMetadataOutput(for: item)
@@ -352,7 +375,6 @@ class RadioPlayerService: NSObject {
         updateNowPlayingInfo(title: source.title)
         loadArtwork(for: source)
 
-        nowPlayingTitle = nil
         emitState()
         return true
     }
@@ -522,6 +544,7 @@ extension RadioPlayerService: AVPlayerItemMetadataOutputPushDelegate {
     func metadataOutput(_ output: AVPlayerItemMetadataOutput,
                         didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup],
                         from track: AVPlayerItemTrack?) {
+        guard isSetUp, output === metadataOutput, player?.currentItem != nil else { return }
         for group in groups {
             for item in group.items {
                 if let title = item.stringValue, !title.isEmpty {

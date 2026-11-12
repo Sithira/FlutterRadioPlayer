@@ -27,12 +27,26 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var player: Player
     private var mediaSession: MediaLibrarySession? = null
 
+    companion object {
+        private var instance: PlaybackService? = null
+
+        fun shutdown(): Boolean {
+            val service = instance ?: return false
+            service.player.clearMediaItems()
+            service.pauseAllPlayersAndStopSelf()
+            return true
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
         initializeSessionAndPlayer()
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
+        if (::player.isInitialized) player.removeListener(playerListener)
         mediaSession?.run {
             player.release()
             release()
@@ -56,6 +70,7 @@ class PlaybackService : MediaLibraryService() {
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
+        player.volume = 0.5f
 
         val sessionBuilder = MediaLibrarySession.Builder(this, player, object : MediaLibrarySession.Callback {
             override fun onAddMediaItems(
@@ -81,51 +96,63 @@ class PlaybackService : MediaLibraryService() {
         notificationProvider.setSmallIcon(appInfo.icon)
         setMediaNotificationProvider(notificationProvider)
 
-        player.addListener(object : Player.Listener {
-            override fun onEvents(player: Player, events: Player.Events) {
-                RadioStateStore.updatePlayer(
-                    status = playbackStatusOf(player),
-                    index = if (player.mediaItemCount == 0) null else player.currentMediaItemIndex.toLong(),
-                    newVolume = player.volume.toDouble(),
+        player.addListener(playerListener)
+    }
+
+    private val playerListener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            publishPlayerState()
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            RadioStateStore.discardError()
+            RadioStateStore.setNowPlayingTitle(null)
+            publishPlayerState()
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            RadioStateStore.setError(
+                RadioPlayerErrorMessage(
+                    code = errorCodeOf(error),
+                    message = error.message?.takeIf { it.isNotBlank() }
+                        ?.let { "${error.errorCodeName}: $it" }
+                        ?: error.errorCodeName,
                 )
-            }
+            )
+            publishPlayerState()
+        }
 
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                RadioStateStore.clearError()
-                RadioStateStore.setNowPlayingTitle(null)
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) {
+                RadioStateStore.discardError()
+                publishPlayerState()
             }
+        }
 
-            override fun onPlayerError(error: PlaybackException) {
-                RadioStateStore.setError(
-                    RadioPlayerErrorMessage(
-                        code = errorCodeOf(error),
-                        message = error.message?.takeIf { it.isNotBlank() }
-                            ?.let { "${error.errorCodeName}: $it" }
-                            ?: error.errorCodeName,
-                    )
-                )
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) RadioStateStore.clearError()
-            }
-
-            override fun onMetadata(metadata: Metadata) {
-                for (i in 0 until metadata.length()) {
-                    val entry = metadata[i]
-                    if (entry is IcyInfo && !entry.title.isNullOrEmpty()) {
-                        RadioStateStore.setNowPlayingTitle(entry.title)
-                        return
-                    }
+        override fun onMetadata(metadata: Metadata) {
+            for (i in 0 until metadata.length()) {
+                val entry = metadata[i]
+                if (entry is IcyInfo && !entry.title.isNullOrEmpty()) {
+                    RadioStateStore.setNowPlayingTitle(entry.title)
+                    publishPlayerState()
+                    return
                 }
             }
+        }
 
-            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                val title = mediaMetadata.title?.toString() ?: return
-                RadioStateStore.setNowPlayingTitle(title)
-            }
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            val title = mediaMetadata.title?.toString() ?: return
+            RadioStateStore.setNowPlayingTitle(title)
+            publishPlayerState()
+        }
+    }
 
-        })
+    private fun publishPlayerState() {
+        RadioStateStore.updatePlayer(
+            status = playbackStatusOf(player),
+            index = if (player.mediaItemCount == 0) null else player.currentMediaItemIndex.toLong(),
+            newVolume = player.volume.toDouble(),
+        )
     }
 
     private fun errorCodeOf(error: PlaybackException): RadioPlayerErrorCodeMessage =

@@ -48,13 +48,16 @@ object RadioStateStore {
     @Synchronized
     fun setNowPlayingTitle(title: String?) {
         nowPlayingTitle = title
-        publish()
     }
 
     @Synchronized
     fun setError(newError: RadioPlayerErrorMessage) {
         error = newError
-        publish()
+    }
+
+    @Synchronized
+    fun discardError() {
+        error = null
     }
 
     @Synchronized
@@ -76,7 +79,7 @@ object RadioStateStore {
     private fun compose() = RadioPlayerStateMessage(
         status = if (error != null) PlaybackStatusMessage.ERROR else playerStatus,
         currentIndex = currentIndex,
-        nowPlayingTitle = nowPlayingTitle,
+        nowPlayingTitle = if (currentIndex == null) null else nowPlayingTitle,
         volume = volume,
         error = error,
     )

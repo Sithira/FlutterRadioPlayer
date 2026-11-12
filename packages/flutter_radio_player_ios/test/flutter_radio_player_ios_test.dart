@@ -265,6 +265,32 @@ void main() {
       await pump();
       expect(states, isEmpty);
     });
+
+    test('does not emit a snapshot equal to the previous one', () async {
+      final states = <RadioPlayerState>[];
+      player.stateStream.listen(states.add);
+      events.add(_message(status: PlaybackStatusMessage.playing));
+      events.add(_message(status: PlaybackStatusMessage.playing));
+      events.add(_message(status: PlaybackStatusMessage.paused));
+      events.add(_message(status: PlaybackStatusMessage.playing));
+      await pump();
+      expect(states.map((s) => s.status), [
+        PlaybackStatus.playing,
+        PlaybackStatus.paused,
+        PlaybackStatus.playing,
+      ]);
+    });
+
+    test('a refresh after dispose does not repeat an identical snapshot',
+        () async {
+      final states = <RadioPlayerState>[];
+      player.stateStream.listen(states.add);
+      events.add(_message());
+      await pump();
+      await player.dispose();
+      await pump();
+      expect(states, [const RadioPlayerState()]);
+    });
   });
 
   group('legacy streams', () {
@@ -422,6 +448,42 @@ void main() {
           .add(_message(status: PlaybackStatusMessage.paused, currentIndex: 0));
       await pump();
       expect(player.state.currentSource, isNull);
+    });
+
+    test('initialize with a new list re-derives the current source', () async {
+      const other = [RadioSource(url: 'https://c.example/stream', title: 'C')];
+      final states = <RadioPlayerState>[];
+      player.stateStream.listen(states.add);
+      await player.initialize(_sources);
+      events.add(
+        _message(status: PlaybackStatusMessage.paused, currentIndex: 0),
+      );
+      await pump();
+      expect(player.state.currentSource, _sources[0]);
+
+      await player.initialize(other);
+      await pump();
+      expect(player.state.currentSource, other[0]);
+      expect(states.map((s) => s.currentSource), [_sources[0], other[0]]);
+    });
+
+    test('dispose re-derives the current source from an equal snapshot',
+        () async {
+      final states = <RadioPlayerState>[];
+      player.stateStream.listen(states.add);
+      await player.initialize(_sources);
+      final message =
+          _message(status: PlaybackStatusMessage.paused, currentIndex: 0);
+      events.add(message);
+      await pump();
+      expect(player.state.currentSource, _sources[0]);
+
+      hostApi.stateOnGet = message;
+      await player.dispose();
+      await pump();
+      expect(player.state.currentIndex, 0);
+      expect(player.state.currentSource, isNull);
+      expect(states.last.currentSource, isNull);
     });
   });
 }
