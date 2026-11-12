@@ -3,32 +3,77 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import UIKit
+import os
+
+func mapPlaybackStatus(
+    hasError: Bool,
+    hasSources: Bool,
+    hasCurrentItem: Bool,
+    timeControlStatus: AVPlayer.TimeControlStatus
+) -> PlaybackStatusMessage {
+    if hasError { return .error }
+    if !hasSources || !hasCurrentItem { return .idle }
+    switch timeControlStatus {
+    case .waitingToPlayAtSpecifiedRate: return .loading
+    case .playing: return .playing
+    case .paused: return .paused
+    @unknown default: return .paused
+    }
+}
+
+private let networkErrorCodes: Set<Int> = [
+    NSURLErrorNotConnectedToInternet,
+    NSURLErrorNetworkConnectionLost,
+    NSURLErrorCannotConnectToHost,
+    NSURLErrorCannotFindHost,
+    NSURLErrorDNSLookupFailed,
+    NSURLErrorTimedOut,
+]
+
+func mapPlaybackError(_ error: Error?) -> RadioPlayerErrorMessage {
+    var current = error as NSError?
+    var isNetworkError = false
+    while let candidate = current {
+        if candidate.domain == NSURLErrorDomain && networkErrorCodes.contains(candidate.code) {
+            isNetworkError = true
+            break
+        }
+        current = candidate.userInfo[NSUnderlyingErrorKey] as? NSError
+    }
+    let description = (error as NSError?)?.localizedDescription ?? ""
+    return RadioPlayerErrorMessage(
+        code: isNetworkError ? .network : .unknown,
+        message: description.isEmpty ? "Playback failed" : description
+    )
+}
 
 class RadioPlayerService: NSObject {
     static let instance = RadioPlayerService()
 
+    private static let log = Logger(subsystem: "flutter_radio_player_ios", category: "FlutterRadioPlayer")
+
     private var player: AVPlayer?
+    private var isSetUp = false
+    private var volume: Float = 0.5
+    private var userIntendsToPlay = false
+    private var currentArtwork: MPMediaItemArtwork?
+    private var artworkLoadToken = 0
+    private var artworkTask: URLSessionDataTask?
     private var sources: [RadioSourceMessage] = []
     private var currentIndex: Int = 0
     private var timeControlStatusObservation: NSKeyValueObservation?
     private var statusObservation: NSKeyValueObservation?
     private var metadataOutput: AVPlayerItemMetadataOutput?
 
-    var playbackStateSink: PigeonEventSink<Bool>?
-    var nowPlayingSink: PigeonEventSink<NowPlayingInfoMessage>?
-    var volumeSink: PigeonEventSink<VolumeInfoMessage>?
+    private var stateSink: PigeonEventSink<RadioPlayerStateMessage>?
+    private var lastEmittedState: RadioPlayerStateMessage?
+    private var nowPlayingTitle: String?
+    private var lastError: RadioPlayerErrorMessage?
 
     private var registrar: FlutterPluginRegistrar?
 
     private override init() {
         super.init()
-        setupAudioSession()
-        setupRemoteCommands()
-        player = AVPlayer()
-        player?.volume = 0.5
-        observePlayerState()
-        observeInterruptions()
-        observeRouteChanges()
     }
 
     func setRegistrar(_ registrar: FlutterPluginRegistrar) {
@@ -36,41 +81,35 @@ class RadioPlayerService: NSObject {
     }
 
     func initialize(sources: [RadioSourceMessage], playWhenReady: Bool) {
+        setUp()
         self.sources = sources
         self.currentIndex = 0
+        userIntendsToPlay = false
+        lastError = nil
 
-        try? AVAudioSession.sharedInstance().setActive(true)
-        reattachObservers()
+        guard !sources.isEmpty else {
+            emitState()
+            return
+        }
 
-        guard !sources.isEmpty else { return }
-
-        loadSource(at: 0)
-        if playWhenReady {
-            player?.play()
+        if loadSource(at: 0) && playWhenReady {
+            startPlayback()
         }
     }
 
-    private func reattachObservers() {
-        NotificationCenter.default.removeObserver(
-            self, name: AVAudioSession.interruptionNotification, object: nil
-        )
-        NotificationCenter.default.removeObserver(
-            self, name: AVAudioSession.routeChangeNotification, object: nil
-        )
-        observeInterruptions()
-        observeRouteChanges()
-    }
-
     func play() {
-        try? AVAudioSession.sharedInstance().setActive(true)
-        player?.play()
+        guard requireSetUp("play") else { return }
+        startPlayback()
     }
 
     func pause() {
+        guard requireSetUp("pause") else { return }
+        userIntendsToPlay = false
         player?.pause()
     }
 
     func playOrPause() {
+        guard requireSetUp("playOrPause") else { return }
         if player?.timeControlStatus == .playing {
             pause()
         } else {
@@ -79,71 +118,166 @@ class RadioPlayerService: NSObject {
     }
 
     func setVolume(volume: Float) {
+        self.volume = volume
         player?.volume = volume
-        DispatchQueue.main.async {
-            self.volumeSink?.success(VolumeInfoMessage(volume: Double(volume), isMuted: volume == 0))
-        }
+        emitState()
     }
 
     func getVolume() -> Float {
-        return player?.volume ?? 0.5
+        return volume
     }
 
     func nextSource() {
+        guard requireSetUp("nextSource") else { return }
         guard !sources.isEmpty else { return }
         let nextIndex = (currentIndex + 1) % sources.count
-        loadSource(at: nextIndex)
-        player?.play()
+        if loadSource(at: nextIndex) {
+            startPlayback()
+        }
     }
 
     func previousSource() {
+        guard requireSetUp("previousSource") else { return }
         guard !sources.isEmpty else { return }
         let prevIndex = (currentIndex - 1 + sources.count) % sources.count
-        loadSource(at: prevIndex)
-        player?.play()
+        if loadSource(at: prevIndex) {
+            startPlayback()
+        }
     }
 
     func jumpToSourceAtIndex(index: Int) {
+        guard requireSetUp("jumpToSourceAtIndex") else { return }
         guard index >= 0 && index < sources.count else { return }
-        loadSource(at: index)
-        player?.play()
+        if loadSource(at: index) {
+            startPlayback()
+        }
     }
 
     func dispose() {
+        let wasSetUp = isSetUp
         player?.pause()
         player?.replaceCurrentItem(with: nil)
+        nowPlayingTitle = nil
+        lastError = nil
+        userIntendsToPlay = false
+        tearDown()
+
+        if wasSetUp {
+            try? AVAudioSession.sharedInstance().setActive(
+                false, options: .notifyOthersOnDeactivation
+            )
+        }
+        emitState()
+    }
+
+    func setStateSink(_ sink: PigeonEventSink<RadioPlayerStateMessage>?) {
+        stateSink = sink
+        guard let sink = sink else { return }
+        let state = makeState()
+        lastEmittedState = state
+        sink.success(state)
+    }
+
+    func currentState() -> RadioPlayerStateMessage {
+        return makeState()
+    }
+
+    // MARK: - Private
+
+    private func makeState() -> RadioPlayerStateMessage {
+        let hasCurrentItem = player?.currentItem != nil
+        let failedItem = player?.currentItem?.status == .failed ? player?.currentItem : nil
+        let error = lastError ?? failedItem.map { mapPlaybackError($0.error) }
+        let status = mapPlaybackStatus(
+            hasError: error != nil,
+            hasSources: !sources.isEmpty,
+            hasCurrentItem: hasCurrentItem,
+            timeControlStatus: player?.timeControlStatus ?? .paused
+        )
+        return RadioPlayerStateMessage(
+            status: status,
+            currentIndex: hasCurrentItem && !sources.isEmpty ? Int64(currentIndex) : nil,
+            nowPlayingTitle: nowPlayingTitle,
+            volume: Double(volume),
+            error: error
+        )
+    }
+
+    private func emitState() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let state = self.makeState()
+            guard state != self.lastEmittedState else { return }
+            self.lastEmittedState = state
+            self.stateSink?.success(state)
+        }
+    }
+
+    private func setUp() {
+        guard !isSetUp else { return }
+        isSetUp = true
+        configureAudioSession()
+        if player == nil {
+            let newPlayer = AVPlayer()
+            newPlayer.volume = volume
+            player = newPlayer
+        }
+        setupRemoteCommands()
+        observePlayerState()
+        observeInterruptions()
+        observeRouteChanges()
+        observeItemFailures()
+    }
+
+    private func tearDown() {
+        isSetUp = false
         timeControlStatusObservation?.invalidate()
         timeControlStatusObservation = nil
         statusObservation?.invalidate()
         statusObservation = nil
         metadataOutput = nil
+        NotificationCenter.default.removeObserver(self)
 
-        NotificationCenter.default.removeObserver(
-            self, name: AVAudioSession.interruptionNotification, object: nil
-        )
-        NotificationCenter.default.removeObserver(
-            self, name: AVAudioSession.routeChangeNotification, object: nil
-        )
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.removeTarget(self)
+        commandCenter.pauseCommand.removeTarget(self)
+        commandCenter.nextTrackCommand.removeTarget(self)
+        commandCenter.previousTrackCommand.removeTarget(self)
+        UIApplication.shared.endReceivingRemoteControlEvents()
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        MPRemoteCommandCenter.shared().playCommand.removeTarget(self)
-        MPRemoteCommandCenter.shared().pauseCommand.removeTarget(self)
-        MPRemoteCommandCenter.shared().nextTrackCommand.removeTarget(self)
-        MPRemoteCommandCenter.shared().previousTrackCommand.removeTarget(self)
-
-        try? AVAudioSession.sharedInstance().setActive(
-            false, options: .notifyOthersOnDeactivation
-        )
+        cancelArtworkLoad()
+        currentArtwork = nil
+        sources = []
+        currentIndex = 0
     }
 
-    // MARK: - Private
+    private func requireSetUp(_ method: String) -> Bool {
+        guard isSetUp else {
+            Self.log.warning("\(method, privacy: .public)() called before initialize(); ignored")
+            return false
+        }
+        return true
+    }
 
-    private func setupAudioSession() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default)
-            try session.setActive(true)
-        } catch {}
+    private func configureAudioSession() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+    }
+
+    private func startPlayback() {
+        userIntendsToPlay = true
+        if lastError != nil {
+            lastError = nil
+            emitState()
+        }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player?.play()
+    }
+
+    private func cancelArtworkLoad() {
+        artworkLoadToken += 1
+        artworkTask?.cancel()
+        artworkTask = nil
     }
 
     private func setupRemoteCommands() {
@@ -181,29 +315,53 @@ class RadioPlayerService: NSObject {
         return .success
     }
 
-    private func loadSource(at index: Int) {
-        currentIndex = index
+    @discardableResult
+    private func loadSource(at index: Int) -> Bool {
         let source = sources[index]
 
-        guard let url = URL(string: source.url) else { return }
+        guard let url = URL(string: source.url), let scheme = url.scheme, !scheme.isEmpty else {
+            lastError = RadioPlayerErrorMessage(
+                code: .invalidSource,
+                message: "Invalid source URL: \(source.url)"
+            )
+            emitState()
+            return false
+        }
 
+        currentIndex = index
+        lastError = nil
         statusObservation?.invalidate()
+        cancelArtworkLoad()
+        currentArtwork = nil
 
         let item = AVPlayerItem(url: url)
         setupMetadataOutput(for: item)
         player?.replaceCurrentItem(with: item)
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            if item.status == .readyToPlay {
+            switch item.status {
+            case .readyToPlay:
                 self?.updateNowPlayingInfo(title: source.title)
+            case .failed:
+                self?.handleItemFailure(item, error: item.error)
+            default:
+                break
             }
         }
 
         updateNowPlayingInfo(title: source.title)
         loadArtwork(for: source)
 
-        DispatchQueue.main.async {
-            self.nowPlayingSink?.success(NowPlayingInfoMessage(title: nil))
+        nowPlayingTitle = nil
+        emitState()
+        return true
+    }
+
+    private func handleItemFailure(_ item: AVPlayerItem, error: Error?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isSetUp, item === self.player?.currentItem else { return }
+            self.lastError = mapPlaybackError(error)
+            self.emitState()
         }
     }
 
@@ -217,13 +375,12 @@ class RadioPlayerService: NSObject {
     private func observePlayerState() {
         timeControlStatusObservation = player?.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             DispatchQueue.main.async {
-                let isPlaying = player.timeControlStatus != .paused
-                self?.playbackStateSink?.success(isPlaying)
-
+                guard let self = self, self.isSetUp else { return }
                 var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
                 info[MPNowPlayingInfoPropertyPlaybackRate] =
                     player.timeControlStatus == .playing ? 1.0 : 0.0
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+                self.emitState()
             }
         }
     }
@@ -237,6 +394,21 @@ class RadioPlayerService: NSObject {
         )
     }
 
+    private func observeItemFailures() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleFailedToPlayToEnd),
+            name: .AVPlayerItemFailedToPlayToEndTime,
+            object: nil
+        )
+    }
+
+    @objc private func handleFailedToPlayToEnd(_ notification: Notification) {
+        guard let item = notification.object as? AVPlayerItem else { return }
+        let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+        handleItemFailure(item, error: error ?? item.error)
+    }
+
     private func observeRouteChanges() {
         NotificationCenter.default.addObserver(
             self,
@@ -247,18 +419,22 @@ class RadioPlayerService: NSObject {
     }
 
     @objc private func handleInterruption(_ notification: Notification) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.handleInterruption(notification) }
+            return
+        }
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
         switch type {
         case .began:
-            pause()
+            player?.pause()
         case .ended:
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                if options.contains(.shouldResume) {
-                    play()
+                if options.contains(.shouldResume) && userIntendsToPlay {
+                    startPlayback()
                 }
             }
         @unknown default:
@@ -267,6 +443,10 @@ class RadioPlayerService: NSObject {
     }
 
     @objc private func handleRouteChange(_ notification: Notification) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.handleRouteChange(notification) }
+            return
+        }
         guard let userInfo = notification.userInfo,
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
@@ -283,8 +463,7 @@ class RadioPlayerService: NSObject {
             MPNowPlayingInfoPropertyIsLiveStream: true,
         ]
 
-        if let existing = MPNowPlayingInfoCenter.default().nowPlayingInfo,
-           let artwork = existing[MPMediaItemPropertyArtwork] {
+        if let artwork = currentArtwork {
             info[MPMediaItemPropertyArtwork] = artwork
         }
 
@@ -303,12 +482,16 @@ class RadioPlayerService: NSObject {
 
     private func loadArtworkFromURL(_ urlString: String) {
         guard let url = URL(string: urlString) else { return }
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+        let token = artworkLoadToken
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             guard let data = data, let image = UIImage(data: data) else { return }
             DispatchQueue.main.async {
-                self?.setNowPlayingArtwork(image)
+                guard let self = self, self.artworkLoadToken == token else { return }
+                self.setNowPlayingArtwork(image)
             }
-        }.resume()
+        }
+        artworkTask = task
+        task.resume()
     }
 
     private func loadArtworkFromAsset(_ assetName: String) {
@@ -321,6 +504,7 @@ class RadioPlayerService: NSObject {
 
     private func setNowPlayingArtwork(_ image: UIImage) {
         let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        currentArtwork = artwork
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPMediaItemPropertyArtwork] = artwork
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
@@ -342,9 +526,8 @@ extension RadioPlayerService: AVPlayerItemMetadataOutputPushDelegate {
             for item in group.items {
                 if let title = item.stringValue, !title.isEmpty {
                     updateNowPlayingInfo(title: title)
-                    DispatchQueue.main.async {
-                        self.nowPlayingSink?.success(NowPlayingInfoMessage(title: title))
-                    }
+                    nowPlayingTitle = title
+                    emitState()
                     return
                 }
             }

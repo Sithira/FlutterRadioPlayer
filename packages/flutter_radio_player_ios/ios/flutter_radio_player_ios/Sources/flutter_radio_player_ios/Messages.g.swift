@@ -128,6 +128,24 @@ func deepHashMessages(value: Any?, hasher: inout Hasher) {
 
     
 
+enum PlaybackStatusMessage: Int {
+  case idle = 0
+  case loading = 1
+  case playing = 2
+  case paused = 3
+  case error = 4
+}
+
+enum RadioPlayerErrorCodeMessage: Int {
+  case invalidSource = 0
+  case network = 1
+  case httpStatus = 2
+  case unsupportedFormat = 3
+  case backgroundRestricted = 4
+  case timeout = 5
+  case unknown = 6
+}
+
 /// Generated class from Pigeon that represents data sent in messages.
 struct RadioSourceMessage: Hashable {
   var url: String
@@ -162,24 +180,28 @@ struct RadioSourceMessage: Hashable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
-struct NowPlayingInfoMessage: Hashable {
-  var title: String? = nil
+struct RadioPlayerErrorMessage: Hashable {
+  var code: RadioPlayerErrorCodeMessage
+  var message: String
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
-  static func fromList(_ pigeonVar_list: [Any?]) -> NowPlayingInfoMessage? {
-    let title: String? = nilOrValue(pigeonVar_list[0])
+  static func fromList(_ pigeonVar_list: [Any?]) -> RadioPlayerErrorMessage? {
+    let code = pigeonVar_list[0] as! RadioPlayerErrorCodeMessage
+    let message = pigeonVar_list[1] as! String
 
-    return NowPlayingInfoMessage(
-      title: title
+    return RadioPlayerErrorMessage(
+      code: code,
+      message: message
     )
   }
   func toList() -> [Any?] {
     return [
-      title
+      code,
+      message,
     ]
   }
-  static func == (lhs: NowPlayingInfoMessage, rhs: NowPlayingInfoMessage) -> Bool {
+  static func == (lhs: RadioPlayerErrorMessage, rhs: RadioPlayerErrorMessage) -> Bool {
     return deepEqualsMessages(lhs.toList(), rhs.toList())  }
   func hash(into hasher: inout Hasher) {
     deepHashMessages(value: toList(), hasher: &hasher)
@@ -187,28 +209,40 @@ struct NowPlayingInfoMessage: Hashable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
-struct VolumeInfoMessage: Hashable {
+struct RadioPlayerStateMessage: Hashable {
+  var status: PlaybackStatusMessage
+  var currentIndex: Int64? = nil
+  var nowPlayingTitle: String? = nil
   var volume: Double
-  var isMuted: Bool
+  var error: RadioPlayerErrorMessage? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
-  static func fromList(_ pigeonVar_list: [Any?]) -> VolumeInfoMessage? {
-    let volume = pigeonVar_list[0] as! Double
-    let isMuted = pigeonVar_list[1] as! Bool
+  static func fromList(_ pigeonVar_list: [Any?]) -> RadioPlayerStateMessage? {
+    let status = pigeonVar_list[0] as! PlaybackStatusMessage
+    let currentIndex: Int64? = nilOrValue(pigeonVar_list[1])
+    let nowPlayingTitle: String? = nilOrValue(pigeonVar_list[2])
+    let volume = pigeonVar_list[3] as! Double
+    let error: RadioPlayerErrorMessage? = nilOrValue(pigeonVar_list[4])
 
-    return VolumeInfoMessage(
+    return RadioPlayerStateMessage(
+      status: status,
+      currentIndex: currentIndex,
+      nowPlayingTitle: nowPlayingTitle,
       volume: volume,
-      isMuted: isMuted
+      error: error
     )
   }
   func toList() -> [Any?] {
     return [
+      status,
+      currentIndex,
+      nowPlayingTitle,
       volume,
-      isMuted,
+      error,
     ]
   }
-  static func == (lhs: VolumeInfoMessage, rhs: VolumeInfoMessage) -> Bool {
+  static func == (lhs: RadioPlayerStateMessage, rhs: RadioPlayerStateMessage) -> Bool {
     return deepEqualsMessages(lhs.toList(), rhs.toList())  }
   func hash(into hasher: inout Hasher) {
     deepHashMessages(value: toList(), hasher: &hasher)
@@ -219,11 +253,23 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
     case 129:
-      return RadioSourceMessage.fromList(self.readValue() as! [Any?])
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return PlaybackStatusMessage(rawValue: enumResultAsInt)
+      }
+      return nil
     case 130:
-      return NowPlayingInfoMessage.fromList(self.readValue() as! [Any?])
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return RadioPlayerErrorCodeMessage(rawValue: enumResultAsInt)
+      }
+      return nil
     case 131:
-      return VolumeInfoMessage.fromList(self.readValue() as! [Any?])
+      return RadioSourceMessage.fromList(self.readValue() as! [Any?])
+    case 132:
+      return RadioPlayerErrorMessage.fromList(self.readValue() as! [Any?])
+    case 133:
+      return RadioPlayerStateMessage.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -232,14 +278,20 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
 
 private class MessagesPigeonCodecWriter: FlutterStandardWriter {
   override func writeValue(_ value: Any) {
-    if let value = value as? RadioSourceMessage {
+    if let value = value as? PlaybackStatusMessage {
       super.writeByte(129)
-      super.writeValue(value.toList())
-    } else if let value = value as? NowPlayingInfoMessage {
+      super.writeValue(value.rawValue)
+    } else if let value = value as? RadioPlayerErrorCodeMessage {
       super.writeByte(130)
-      super.writeValue(value.toList())
-    } else if let value = value as? VolumeInfoMessage {
+      super.writeValue(value.rawValue)
+    } else if let value = value as? RadioSourceMessage {
       super.writeByte(131)
+      super.writeValue(value.toList())
+    } else if let value = value as? RadioPlayerErrorMessage {
+      super.writeByte(132)
+      super.writeValue(value.toList())
+    } else if let value = value as? RadioPlayerStateMessage {
+      super.writeByte(133)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -276,6 +328,7 @@ protocol RadioPlayerHostApi {
   func previousSource(completion: @escaping (Result<Void, Error>) -> Void)
   func jumpToSourceAtIndex(index: Int64, completion: @escaping (Result<Void, Error>) -> Void)
   func dispose(completion: @escaping (Result<Void, Error>) -> Void)
+  func getState(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -441,6 +494,21 @@ class RadioPlayerHostApiSetup {
     } else {
       disposeChannel.setMessageHandler(nil)
     }
+    let getStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getStateChannel.setMessageHandler { _, reply in
+        api.getState { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getStateChannel.setMessageHandler(nil)
+    }
   }
 }
 
@@ -493,43 +561,15 @@ class PigeonEventSink<ReturnType> {
 
 }
 
-class OnPlaybackStateChangedStreamHandler: PigeonEventChannelWrapper<Bool> {
+class OnStateChangedStreamHandler: PigeonEventChannelWrapper<RadioPlayerStateMessage> {
   static func register(with messenger: FlutterBinaryMessenger,
                       instanceName: String = "",
-                      streamHandler: OnPlaybackStateChangedStreamHandler) {
-    var channelName = "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerEventApi.onPlaybackStateChanged"
+                      streamHandler: OnStateChangedStreamHandler) {
+    var channelName = "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerEventApi.onStateChanged"
     if !instanceName.isEmpty {
       channelName += ".\(instanceName)"
     }
-    let internalStreamHandler = PigeonStreamHandler<Bool>(wrapper: streamHandler)
-    let channel = FlutterEventChannel(name: channelName, binaryMessenger: messenger, codec: messagesPigeonMethodCodec)
-    channel.setStreamHandler(internalStreamHandler)
-  }
-}
-      
-class OnNowPlayingChangedStreamHandler: PigeonEventChannelWrapper<NowPlayingInfoMessage> {
-  static func register(with messenger: FlutterBinaryMessenger,
-                      instanceName: String = "",
-                      streamHandler: OnNowPlayingChangedStreamHandler) {
-    var channelName = "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerEventApi.onNowPlayingChanged"
-    if !instanceName.isEmpty {
-      channelName += ".\(instanceName)"
-    }
-    let internalStreamHandler = PigeonStreamHandler<NowPlayingInfoMessage>(wrapper: streamHandler)
-    let channel = FlutterEventChannel(name: channelName, binaryMessenger: messenger, codec: messagesPigeonMethodCodec)
-    channel.setStreamHandler(internalStreamHandler)
-  }
-}
-      
-class OnVolumeChangedStreamHandler: PigeonEventChannelWrapper<VolumeInfoMessage> {
-  static func register(with messenger: FlutterBinaryMessenger,
-                      instanceName: String = "",
-                      streamHandler: OnVolumeChangedStreamHandler) {
-    var channelName = "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerEventApi.onVolumeChanged"
-    if !instanceName.isEmpty {
-      channelName += ".\(instanceName)"
-    }
-    let internalStreamHandler = PigeonStreamHandler<VolumeInfoMessage>(wrapper: streamHandler)
+    let internalStreamHandler = PigeonStreamHandler<RadioPlayerStateMessage>(wrapper: streamHandler)
     let channel = FlutterEventChannel(name: channelName, binaryMessenger: messenger, codec: messagesPigeonMethodCodec)
     channel.setStreamHandler(internalStreamHandler)
   }
