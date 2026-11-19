@@ -30,3 +30,5 @@ build/
 # Swift Package Manager
 .build/
 .swiftpm/
+
+docs/
