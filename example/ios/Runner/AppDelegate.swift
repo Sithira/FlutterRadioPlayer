@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import flutter_radio_player_ios
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -33,6 +34,8 @@ import UIKit
         GeneratedPluginRegistrant.register(with: engine)
         self.secondEngine = engine
         result(nil)
+      case "coreExists":
+        result(RadioPlayerCore.existing != nil)
       case "destroySecondEngine":
         self.secondEngine?.destroyContext()
         self.secondEngine = nil

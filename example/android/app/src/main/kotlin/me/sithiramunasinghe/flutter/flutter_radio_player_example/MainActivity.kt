@@ -7,6 +7,7 @@ import io.flutter.embedding.engine.FlutterEngineGroup
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.FlutterCallbackInformation
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.RadioPlayerClient
 
 class MainActivity : FlutterActivity() {
     private var secondEngine: FlutterEngine? = null
@@ -26,6 +27,11 @@ class MainActivity : FlutterActivity() {
                     )
                     secondEngine = FlutterEngineGroup(this).createAndRunEngine(this, entrypoint)
                     result.success(null)
+                }
+                "coreExists" -> {
+                    val client = RadioPlayerClient(this)
+                    result.success(client.snapshot.sources.size >= 0)
+                    client.release()
                 }
                 "destroySecondEngine" -> {
                     secondEngine?.destroy()

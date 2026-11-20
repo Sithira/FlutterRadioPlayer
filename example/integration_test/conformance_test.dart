@@ -406,6 +406,7 @@ void main() {
       await player.setSources(stations, autoPlay: true);
       await _audible();
 
+      expect(await _host.invokeMethod<bool>('coreExists'), isTrue);
       _step('0');
       await _host.invokeMethod<void>(
         'spawnSecondEngine',
