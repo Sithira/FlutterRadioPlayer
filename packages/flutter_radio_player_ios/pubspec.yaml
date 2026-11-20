@@ -21,6 +21,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_radio_player_platform_interface: ^4.2.0
+  meta: ^1.18.0
 
 dev_dependencies:
   pigeon: ^30.0.4
