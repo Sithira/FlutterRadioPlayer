@@ -3,7 +3,7 @@ description: Example app for flutter_radio_player.
 publish_to: 'none'
 
 environment:
-  sdk: '>=3.4.3 <4.0.0'
+  sdk: ^3.12.0
 
 dependencies:
   flutter:
