@@ -102,28 +102,28 @@ packages:
       path: "../packages/flutter_radio_player"
       relative: true
     source: path
-    version: "5.0.0-dev.1"
+    version: "5.0.0-dev.2"
   flutter_radio_player_android:
     dependency: "direct overridden"
     description:
       path: "../packages/flutter_radio_player_android"
       relative: true
     source: path
-    version: "5.0.0-dev.1"
+    version: "5.0.0-dev.2"
   flutter_radio_player_ios:
     dependency: "direct overridden"
     description:
       path: "../packages/flutter_radio_player_ios"
       relative: true
     source: path
-    version: "5.0.0-dev.1"
+    version: "5.0.0-dev.2"
   flutter_radio_player_platform_interface:
     dependency: "direct dev"
     description:
       path: "../packages/flutter_radio_player_platform_interface"
       relative: true
     source: path
-    version: "5.0.0-dev.1"
+    version: "5.0.0-dev.2"
   flutter_test:
     dependency: "direct dev"
     description: flutter

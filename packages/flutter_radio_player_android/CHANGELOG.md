@@ -1,3 +1,14 @@
+# 5.0.0-dev.2
+
+* **Breaking:** implements the 5.0 platform interface over a rewritten native
+  core: `PlaybackService` owns the source list and options; each Flutter engine
+  talks to it through its own `RadioPlayerClient`.
+* Nothing connects until playback is requested; refreshing the list around the
+  playing station does not interrupt it.
+* Notification and lock-screen next/previous follow `wrapAround`.
+* Only this app can change the list or options through the media session; stream
+  URLs and headers never appear in session metadata.
+
 # 5.0.0-dev.1
 
 First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.

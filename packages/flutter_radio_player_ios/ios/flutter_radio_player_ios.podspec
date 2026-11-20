@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_radio_player_ios'
   s.module_name      = 'flutter_radio_player_ios'
-  s.version          = '5.0.0-dev.1'
+  s.version          = '5.0.0-dev.2'
   s.summary          = 'iOS implementation of flutter_radio_player.'
   s.description      = <<-DESC
 iOS implementation of the flutter_radio_player plugin using AVFoundation.

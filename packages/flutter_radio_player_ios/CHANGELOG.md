@@ -1,3 +1,13 @@
+# 5.0.0-dev.2
+
+* **Breaking:** implements the 5.0 platform interface over a shared
+  `RadioPlayerCore`; each Flutter engine observes the same player.
+* The audio session is activated on the first play request and deactivated on
+  `stop()` and `setSources([])`; nothing is published to Now Playing before the
+  first play.
+* Lock-screen next/previous follow `wrapAround` and the number of sources; seek
+  controls are disabled.
+
 # 5.0.0-dev.1
 
 First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.

@@ -1,3 +1,29 @@
+# 5.0.0-dev.2
+
+* **Breaking:** the 5.0 API replaces the 4.x one. There is no compatibility layer.
+  * `FlutterRadioPlayer.instance` is the only way to get the player; the public
+    constructor and `dispose()` are gone. One player per process, shared by every
+    Flutter engine.
+  * `setSources(sources, {initialIndex, autoPlay})` replaces `initialize`. It keeps
+    a playing station that is still in the list (matched by `RadioSource.id`) and
+    opens no connection until playback is requested.
+  * `play({index})` replaces `jumpToSourceAtIndex` and always plays;
+    `next()`/`previous()` replace `nextSource()`/`previousSource()` and keep the
+    play state. New `stop()` and `setOptions(RadioPlayerOptions)`.
+  * Every command completes after the native player applied it, with `state`
+    already updated. Only invalid arguments throw (`RangeError`, `ArgumentError`).
+  * `isPlayingStream`, `nowPlayingStream`, `volumeStream`, `getVolume()` and
+    `VolumeInfo` are removed; use `state`, `stateStream`, or the player as a
+    `ValueListenable`.
+  * `RadioPlayerState` gains `sources`, `isPlaying`, `isLoading` and
+    `isReconnecting`; `currentSource` is a getter. Default volume is 1.0.
+  * `RadioSource` gains `id` and `headers` (headers are not sent yet).
+    `NowPlayingInfo.title` is non-null and gains `artist`/`song`.
+* New `RadioPlayerBuilder` widget and `package:flutter_radio_player/testing.dart`
+  with `FakeRadioPlayer`.
+* Not in this pre-release yet: reconnect, per-source headers, live resume after a
+  long pause, and Android Auto / CarPlay.
+
 # 5.0.0-dev.1
 
 First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.

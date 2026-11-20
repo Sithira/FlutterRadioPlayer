@@ -1,3 +1,14 @@
+# 5.0.0-dev.2
+
+* **Breaking:** 5.0 platform interface. Every command returns the
+  `RadioPlayerState` after it was applied; `stateStream` is the only stream.
+  Removed: `initialize`, `dispose`, `getVolume`, `nextSource`, `previousSource`,
+  `jumpToSourceAtIndex`, the legacy streams, the synchronous `state` getter and
+  `VolumeInfo`.
+* Models: `RadioPlayerState.sources`, `isPlaying`, `isLoading`, `isReconnecting`,
+  `copyWith`; `RadioSource.id` and `headers`; `NowPlayingInfo.artist`/`song`;
+  `RadioPlayerOptions`, `ReconnectPolicy`, `AndroidOptions`. Default volume 1.0.
+
 # 5.0.0-dev.1
 
 First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.

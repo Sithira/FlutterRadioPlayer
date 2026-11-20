@@ -19,7 +19,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  flutter_radio_player_platform_interface: ^5.0.0-dev.1
+  flutter_radio_player_platform_interface: ^5.0.0-dev.2
   plugin_platform_interface: ^2.1.7
 
 dependency_overrides:

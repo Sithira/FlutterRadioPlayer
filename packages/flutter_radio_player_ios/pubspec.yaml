@@ -1,6 +1,6 @@
 name: flutter_radio_player_ios
 description: iOS implementation of flutter_radio_player.
-version: 5.0.0-dev.1
+version: 5.0.0-dev.2
 homepage: https://github.com/Sithira/FlutterRadioPlayer
 repository: https://github.com/Sithira/FlutterRadioPlayer
 issue_tracker: https://github.com/Sithira/FlutterRadioPlayer/issues
@@ -20,7 +20,7 @@ flutter:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_radio_player_platform_interface: ^5.0.0-dev.1
+  flutter_radio_player_platform_interface: ^5.0.0-dev.2
   meta: ^1.18.0
 
 dev_dependencies:
