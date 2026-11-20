@@ -18,12 +18,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
-import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo
@@ -51,6 +47,8 @@ public class PlaybackService : MediaLibraryService() {
     }
 
     private lateinit var exoPlayer: ExoPlayer
+    private lateinit var policyPlayer: RadioPolicyPlayer
+    private lateinit var sessionCallback: RadioSessionCallback
     private var session: MediaLibrarySession? = null
 
     private var entries: List<Entry> = emptyList()
@@ -70,7 +68,9 @@ public class PlaybackService : MediaLibraryService() {
             .build()
         exoPlayer.addListener(playerListener)
 
-        val builder = MediaLibrarySession.Builder(this, RadioPolicyPlayer(exoPlayer), sessionCallback)
+        policyPlayer = RadioPolicyPlayer(exoPlayer)
+        sessionCallback = RadioSessionCallback(packageName, Process.myUid(), sessionHost)
+        val builder = MediaLibrarySession.Builder(this, policyPlayer, sessionCallback)
         packageManager.getLaunchIntentForPackage(packageName)?.let { launchIntent ->
             builder.setSessionActivity(
                 PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
@@ -103,45 +103,17 @@ public class PlaybackService : MediaLibraryService() {
         super.onDestroy()
     }
 
-    private fun isTrusted(controller: ControllerInfo): Boolean =
-        controller.packageName == packageName && controller.uid == Process.myUid()
+    private val sessionHost = object : RadioSessionCallback.Host {
+        override fun setSources(args: Bundle): SessionResult =
+            this@PlaybackService.setSources(Wire.sources(args), Wire.initialIndex(args), Wire.autoPlay(args))
 
-    private val sessionCallback = object : MediaLibrarySession.Callback {
-        override fun onConnect(session: MediaSession, controller: ControllerInfo): MediaSession.ConnectionResult {
-            if (!isTrusted(controller)) return super.onConnect(session, controller)
-            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .add(SessionCommand(Wire.SET_SOURCES, Bundle.EMPTY))
-                .add(SessionCommand(Wire.SET_OPTIONS, Bundle.EMPTY))
-                .build()
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(commands)
-                .build()
+        override fun setOptions(args: Bundle): SessionResult {
+            options = Wire.options(args)
+            policyPlayer.wrapAround = options.wrapAround
+            return published()
         }
 
-        override fun onPostConnect(session: MediaSession, controller: ControllerInfo) {
-            if (isTrusted(controller)) session.setSessionExtras(controller, stateBundle())
-        }
-
-        override fun onCustomCommand(
-            session: MediaSession,
-            controller: ControllerInfo,
-            customCommand: SessionCommand,
-            args: Bundle,
-        ): ListenableFuture<SessionResult> {
-            if (!isTrusted(controller)) {
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
-            }
-            return Futures.immediateFuture(
-                when (customCommand.customAction) {
-                    Wire.SET_SOURCES -> setSources(Wire.sources(args), Wire.initialIndex(args), Wire.autoPlay(args))
-                    Wire.SET_OPTIONS -> {
-                        options = Wire.options(args)
-                        published()
-                    }
-                    else -> SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
-                },
-            )
-        }
+        override fun stateBundle(): Bundle = this@PlaybackService.stateBundle()
     }
 
     private fun setSources(sources: List<RadioSourceInfo>, initialIndex: Int?, autoPlay: Boolean): SessionResult {
@@ -232,7 +204,7 @@ public class PlaybackService : MediaLibraryService() {
     private fun publish() {
         val session = session ?: return
         val extras = stateBundle()
-        session.connectedControllers.filter(::isTrusted).forEach { session.setSessionExtras(it, extras) }
+        session.connectedControllers.filter(sessionCallback::isTrusted).forEach { session.setSessionExtras(it, extras) }
     }
 
     private val playerListener = object : Player.Listener {
