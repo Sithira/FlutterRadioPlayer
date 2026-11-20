@@ -2,8 +2,12 @@ package me.sithiramunasinghe.flutter.flutter_radio_player.core
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
+import android.os.Process
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
@@ -16,158 +20,281 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import me.sithiramunasinghe.flutter.flutter_radio_player.PlaybackStatusMessage
-import me.sithiramunasinghe.flutter.flutter_radio_player.RadioPlayerErrorCodeMessage
-import me.sithiramunasinghe.flutter.flutter_radio_player.RadioPlayerErrorMessage
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo
+import me.sithiramunasinghe.flutter.flutter_radio_player.core.logic.selectSource
+import java.util.concurrent.CopyOnWriteArraySet
 
-class PlaybackService : MediaLibraryService() {
+@OptIn(UnstableApi::class)
+public class PlaybackService : MediaLibraryService() {
 
-    private lateinit var player: Player
-    private var mediaSession: MediaLibrarySession? = null
+    internal companion object {
+        @Volatile
+        var isRunning: Boolean = false
+            private set
 
-    companion object {
-        private var instance: PlaybackService? = null
+        private val runningListeners = CopyOnWriteArraySet<() -> Unit>()
 
-        fun shutdown(): Boolean {
-            val service = instance ?: return false
-            service.player.clearMediaItems()
-            service.pauseAllPlayersAndStopSelf()
-            return true
+        fun addRunningListener(listener: () -> Unit) {
+            runningListeners += listener
+        }
+
+        fun removeRunningListener(listener: () -> Unit) {
+            runningListeners -= listener
         }
     }
+
+    private lateinit var exoPlayer: ExoPlayer
+    private var session: MediaLibrarySession? = null
+
+    private var entries: List<Entry> = emptyList()
+    private var options = RadioPlayerOptionsInfo()
+    private var revision = 0L
+    private var nextMediaId = 0L
+    private var seq = 0L
+    private var nowPlaying: Tagged<String>? = null
+    private var error: Tagged<RadioPlayerError>? = null
+    private var currentMediaId: String? = null
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        initializeSessionAndPlayer()
-    }
-
-    override fun onDestroy() {
-        if (instance === this) instance = null
-        if (::player.isInitialized) player.removeListener(playerListener)
-        mediaSession?.run {
-            player.release()
-            release()
-        }
-        mediaSession = null
-        RadioStateStore.reset()
-        super.onDestroy()
-    }
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        if (mediaSession?.player != null) {
-            stopSelf()
-        }
-    }
-
-    override fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? = mediaSession
-
-    @OptIn(UnstableApi::class)
-    private fun initializeSessionAndPlayer() {
-        player = ExoPlayer.Builder(this)
+        exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
-        player.volume = 0.5f
+        exoPlayer.addListener(playerListener)
 
-        val sessionBuilder = MediaLibrarySession.Builder(this, player, object : MediaLibrarySession.Callback {
-            override fun onAddMediaItems(
-                mediaSession: MediaSession,
-                controller: ControllerInfo,
-                mediaItems: MutableList<MediaItem>
-            ): ListenableFuture<MutableList<MediaItem>> {
-                return Futures.immediateFuture(mediaItems)
-            }
-        })
+        val builder = MediaLibrarySession.Builder(this, RadioPolicyPlayer(exoPlayer), sessionCallback)
         packageManager.getLaunchIntentForPackage(packageName)?.let { launchIntent ->
-            sessionBuilder.setSessionActivity(
-                PendingIntent.getActivity(
-                    this, 0, launchIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
+            builder.setSessionActivity(
+                PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
             )
         }
-        mediaSession = sessionBuilder.build()
+        session = builder.build()
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
-        val appInfo = packageManager.getApplicationInfo(packageName, 0)
-        notificationProvider.setSmallIcon(appInfo.icon)
+        notificationProvider.setSmallIcon(packageManager.getApplicationInfo(packageName, 0).icon)
         setMediaNotificationProvider(notificationProvider)
 
-        player.addListener(playerListener)
+        isRunning = true
+        runningListeners.forEach { it() }
+    }
+
+    override fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? = session
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (options.stopOnTaskRemoved) pauseAllPlayersAndStopSelf()
+    }
+
+    override fun onDestroy() {
+        isRunning = false
+        exoPlayer.removeListener(playerListener)
+        session?.run {
+            player.release()
+            release()
+        }
+        session = null
+        super.onDestroy()
+    }
+
+    private fun isTrusted(controller: ControllerInfo): Boolean =
+        controller.packageName == packageName && controller.uid == Process.myUid()
+
+    private val sessionCallback = object : MediaLibrarySession.Callback {
+        override fun onConnect(session: MediaSession, controller: ControllerInfo): MediaSession.ConnectionResult {
+            if (!isTrusted(controller)) return super.onConnect(session, controller)
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+                .add(SessionCommand(Wire.SET_SOURCES, Bundle.EMPTY))
+                .add(SessionCommand(Wire.SET_OPTIONS, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands)
+                .build()
+        }
+
+        override fun onPostConnect(session: MediaSession, controller: ControllerInfo) {
+            if (isTrusted(controller)) session.setSessionExtras(controller, stateBundle())
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (!isTrusted(controller)) {
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+            }
+            return Futures.immediateFuture(
+                when (customCommand.customAction) {
+                    Wire.SET_SOURCES -> setSources(Wire.sources(args), Wire.initialIndex(args), Wire.autoPlay(args))
+                    Wire.SET_OPTIONS -> {
+                        options = Wire.options(args)
+                        published()
+                    }
+                    else -> SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+                },
+            )
+        }
+    }
+
+    private fun setSources(sources: List<RadioSourceInfo>, initialIndex: Int?, autoPlay: Boolean): SessionResult {
+        if (initialIndex != null && initialIndex !in sources.indices) {
+            return SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
+        }
+        val oldIndex = if (exoPlayer.mediaItemCount > 0) exoPlayer.currentMediaItemIndex else null
+        val selection = selectSource(
+            old = entries.map { it.source },
+            oldIndex = oldIndex,
+            new = sources,
+            initialIndex = initialIndex,
+            id = RadioSourceInfo::id,
+            sameStream = RadioSourceInfo::sameStream,
+        )
+        val index = selection.index
+        when {
+            index == null -> {
+                exoPlayer.pause()
+                exoPlayer.stop()
+                exoPlayer.clearMediaItems()
+                entries = emptyList()
+                clearTagged()
+            }
+            selection.keepStream -> keepCurrent(sources, oldIndex!!, index)
+            else -> {
+                exoPlayer.pause()
+                exoPlayer.stop()
+                entries = sources.map { Entry(newMediaId(), it) }
+                exoPlayer.setMediaItems(entries.map(::mediaItem), index, C.TIME_UNSET)
+                clearTagged()
+            }
+        }
+        if (autoPlay && entries.isNotEmpty()) {
+            if (exoPlayer.playbackState == Player.STATE_IDLE) exoPlayer.prepare()
+            exoPlayer.play()
+        }
+        return published()
+    }
+
+    private fun keepCurrent(sources: List<RadioSourceInfo>, current: Int, index: Int) {
+        val kept = entries[current]
+        val newEntries = sources.mapIndexed { i, source ->
+            if (i == index) Entry(kept.mediaId, source) else Entry(newMediaId(), source)
+        }
+        if (current + 1 < exoPlayer.mediaItemCount) exoPlayer.removeMediaItems(current + 1, exoPlayer.mediaItemCount)
+        if (current > 0) exoPlayer.removeMediaItems(0, current)
+        exoPlayer.addMediaItems(0, newEntries.subList(0, index).map(::mediaItem))
+        exoPlayer.addMediaItems(newEntries.subList(index + 1, newEntries.size).map(::mediaItem))
+        val newCurrent = newEntries[index].source
+        if (newCurrent.title != kept.source.title || newCurrent.artwork != kept.source.artwork) {
+            exoPlayer.replaceMediaItem(index, mediaItem(newEntries[index]))
+        }
+        entries = newEntries
+    }
+
+    private fun mediaItem(entry: Entry): MediaItem {
+        val source = entry.source
+        val artwork = source.artworkUri ?: source.artwork?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+        return MediaItem.Builder()
+            .setMediaId(entry.mediaId)
+            .setUri(source.url)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(source.title)
+                    .setArtworkUri(artwork?.toUri())
+                    .build(),
+            )
+            .build()
+    }
+
+    private fun newMediaId(): String = "frp-${nextMediaId++}"
+
+    private fun clearTagged() {
+        nowPlaying = null
+        error = null
+    }
+
+    private fun published(): SessionResult {
+        revision++
+        publish()
+        return SessionResult(SessionResult.RESULT_SUCCESS, Wire.revisionResult(revision))
+    }
+
+    private fun stateBundle(): Bundle =
+        Wire.stateBundle(ServiceState(revision, entries, options, nowPlaying, error))
+
+    private fun publish() {
+        val session = session ?: return
+        val extras = stateBundle()
+        session.connectedControllers.filter(::isTrusted).forEach { session.setSessionExtras(it, extras) }
     }
 
     private val playerListener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) {
-            publishPlayerState()
-        }
-
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            RadioStateStore.discardError()
-            RadioStateStore.setNowPlayingTitle(null)
-            publishPlayerState()
-        }
-
-        override fun onPlayerError(error: PlaybackException) {
-            RadioStateStore.setError(
-                RadioPlayerErrorMessage(
-                    code = errorCodeOf(error),
-                    message = error.message?.takeIf { it.isNotBlank() }
-                        ?.let { "${error.errorCodeName}: $it" }
-                        ?: error.errorCodeName,
-                )
-            )
-            publishPlayerState()
-        }
-
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying) {
-                RadioStateStore.discardError()
-                publishPlayerState()
+            val mediaId = mediaItem?.mediaId
+            if (mediaId == currentMediaId) return
+            currentMediaId = mediaId
+            if (nowPlaying != null || error != null) {
+                clearTagged()
+                publish()
             }
         }
 
         override fun onMetadata(metadata: Metadata) {
+            val mediaId = currentMediaId ?: return
             for (i in 0 until metadata.length()) {
-                val entry = metadata[i]
-                if (entry is IcyInfo && !entry.title.isNullOrEmpty()) {
-                    RadioStateStore.setNowPlayingTitle(entry.title)
-                    publishPlayerState()
+                val title = (metadata[i] as? IcyInfo)?.title
+                if (!title.isNullOrEmpty()) {
+                    nowPlaying = Tagged(mediaId, title, ++seq)
+                    publish()
                     return
                 }
             }
         }
 
-        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            val title = mediaMetadata.title?.toString() ?: return
-            RadioStateStore.setNowPlayingTitle(title)
-            publishPlayerState()
+        override fun onPlayerError(playbackError: PlaybackException) {
+            val mediaId = currentMediaId ?: return
+            error = Tagged(mediaId, RadioPlayerError(errorCodeOf(playbackError), messageOf(playbackError)), ++seq)
+            publish()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when {
+                playbackState == Player.STATE_IDLE && exoPlayer.playerError == null && nowPlaying != null -> {
+                    nowPlaying = null
+                    publish()
+                }
+                playbackState != Player.STATE_IDLE && error != null -> {
+                    error = null
+                    publish()
+                }
+            }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (error != null) {
+                error = null
+                publish()
+            }
         }
     }
 
-    private fun publishPlayerState() {
-        RadioStateStore.updatePlayer(
-            status = playbackStatusOf(player),
-            index = if (player.mediaItemCount == 0) null else player.currentMediaItemIndex.toLong(),
-            newVolume = player.volume.toDouble(),
-        )
+    private fun errorCodeOf(error: PlaybackException): RadioPlayerErrorCode = when (error.errorCode) {
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> RadioPlayerErrorCode.NETWORK
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> RadioPlayerErrorCode.TIMEOUT
+        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> RadioPlayerErrorCode.HTTP_STATUS
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> RadioPlayerErrorCode.UNSUPPORTED_FORMAT
+        else -> RadioPlayerErrorCode.UNKNOWN
     }
 
-    private fun errorCodeOf(error: PlaybackException): RadioPlayerErrorCodeMessage =
-        when (error.errorCode) {
-            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> RadioPlayerErrorCodeMessage.NETWORK
-            else -> RadioPlayerErrorCodeMessage.UNKNOWN
-        }
-
-    private fun playbackStatusOf(player: Player): PlaybackStatusMessage = when {
-        player.mediaItemCount == 0 -> PlaybackStatusMessage.IDLE
-        player.playWhenReady &&
-            (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_BUFFERING) ->
-            PlaybackStatusMessage.LOADING
-        player.isPlaying -> PlaybackStatusMessage.PLAYING
-        else -> PlaybackStatusMessage.PAUSED
-    }
+    private fun messageOf(error: PlaybackException): String =
+        error.message?.takeIf { it.isNotBlank() }?.let { "${error.errorCodeName}: $it" } ?: error.errorCodeName
 }
