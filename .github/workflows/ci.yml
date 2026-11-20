@@ -98,3 +98,23 @@ jobs:
         working-directory: ${{ runner.temp }}/scratch_app
       - run: ${{ matrix.build }}
         working-directory: ${{ runner.temp }}/scratch_app
+
+  pigeon-fresh:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - packages/flutter_radio_player_android
+          - packages/flutter_radio_player_ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.x
+      - run: flutter pub get
+        working-directory: ${{ matrix.package }}
+      - run: dart run pigeon --input pigeons/messages.dart
+        working-directory: ${{ matrix.package }}
+      - run: git diff --exit-code

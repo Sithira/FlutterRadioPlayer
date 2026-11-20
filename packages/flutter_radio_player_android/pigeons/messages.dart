@@ -41,27 +41,27 @@ class RadioPlayerStateMessage {
 
 @HostApi()
 abstract class RadioPlayerHostApi {
-  @async
+  @asyncCallback
   void initialize(List<RadioSourceMessage> sources, bool playWhenReady);
-  @async
+  @asyncCallback
   void play();
-  @async
+  @asyncCallback
   void pause();
-  @async
+  @asyncCallback
   void playOrPause();
-  @async
+  @asyncCallback
   void setVolume(double volume);
-  @async
+  @asyncCallback
   double getVolume();
-  @async
+  @asyncCallback
   void nextSource();
-  @async
+  @asyncCallback
   void previousSource();
-  @async
+  @asyncCallback
   void jumpToSourceAtIndex(int index);
-  @async
+  @asyncCallback
   void dispose();
-  @async
+  @asyncCallback
   RadioPlayerStateMessage getState();
 }
 
