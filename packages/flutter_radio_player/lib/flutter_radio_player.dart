@@ -15,3 +15,4 @@ export 'package:flutter_radio_player_platform_interface/flutter_radio_player_pla
         ReconnectPolicy;
 
 export 'src/flutter_radio_player.dart' show FlutterRadioPlayer;
+export 'src/radio_player_builder.dart';
