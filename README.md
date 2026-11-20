@@ -17,6 +17,53 @@ A Flutter plugin for playing streaming radio with background playback, lock scre
 |-------------|---------|---------|
 | **Support** | SDK 21+ | iOS 14+ |
 
+## 5.0 pre-release
+
+`5.0.0-dev.2` ships the new 5.0 API. It is a pre-release: try it and report issues. The rest of this README after this section describes 4.2; see [MIGRATION.md](https://github.com/Sithira/FlutterRadioPlayer/blob/master/MIGRATION.md) for the changes.
+
+```yaml
+dependencies:
+  flutter_radio_player: ^5.0.0-dev.2
+```
+
+Requires Flutter 3.44 (Dart 3.12) or later, Android minSdk 24 with Java 17, and iOS 15. Apps created with Flutter 3.44 or earlier must raise the iOS deployment target to 15.0.
+
+```dart
+final player = FlutterRadioPlayer.instance;
+
+await player.setSources(const [
+  RadioSource(url: 'https://example.com/chill.mp3', title: 'Chillout'),
+  RadioSource(url: 'https://example.com/jazz.aac', title: 'Jazz FM'),
+]);
+
+RadioPlayerBuilder(
+  builder: (context, state) => Column(
+    children: [
+      Text(state.nowPlaying?.title ?? state.currentSource?.title ?? ''),
+      if (state.isLoading) const LinearProgressIndicator(),
+      IconButton(
+        icon: Icon(state.isPlaying ? Icons.pause : Icons.play_arrow),
+        onPressed: player.playOrPause,
+      ),
+      for (final (index, source) in state.sources.indexed)
+        ListTile(
+          title: Text(source.title ?? source.url),
+          selected: index == state.currentIndex,
+          onTap: () => player.play(index: index),
+        ),
+    ],
+  ),
+);
+```
+
+- There is one player per process, shared by every Flutter engine. There is nothing to construct or dispose; `stop()` turns the radio off.
+- `setSources` is safe on every app start: a station that is playing keeps playing if it is still in the list, and nothing connects until playback is requested.
+- Commands apply in call order, awaited or not. When a command's future completes, `state` already reflects it. Only invalid arguments throw.
+- The player is a `ValueListenable<RadioPlayerState>`, so `ValueListenableBuilder` and `ListenableBuilder` work directly; `stateStream` is there for stream-based code.
+- Widget tests: `FakeRadioPlayer.install()` from `package:flutter_radio_player/testing.dart`.
+
+Not in `5.0.0-dev.2` yet: automatic reconnect, sending per-source `headers`, resuming live audio after a long pause, and Android Auto / CarPlay.
+
 ## Features
 
 - Background audio playback with no extra configuration
