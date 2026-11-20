@@ -9,6 +9,7 @@
     {"input": "http://127.0.0.1:8080/stream", "valid": true},
     {"input": "http://[::1]:8000/stream", "valid": true},
     {"input": "https://radio.example.com", "valid": true},
+    {"input": "http://my_host.example/stream", "valid": true},
     {"input": "not a url", "valid": false},
     {"input": "", "valid": false},
     {"input": "ftp://example.com/stream", "valid": false},

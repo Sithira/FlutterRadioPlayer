@@ -22,6 +22,12 @@ android {
         minSdk = 24
     }
 
+    sourceSets {
+        getByName("test") {
+            resources.srcDir("../../../test_fixtures")
+        }
+    }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
@@ -53,6 +59,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.robolectric:robolectric:4.18.1")
+    testImplementation("org.json:json:20250517")
     testImplementation("androidx.media3:media3-test-utils:$media3Version")
     testImplementation("androidx.media3:media3-test-utils-robolectric:$media3Version")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
