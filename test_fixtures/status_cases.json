@@ -1,0 +1,18 @@
+{
+  "_schema": "PlaybackStatus mapping (5.0 plan row 3), evaluated in this order: no sources -> idle; reconnect pending -> loading; failed and not retrying -> error; playback requested and not rendering -> loading; rendering -> playing; otherwise paused. Each case: name; inputs {hasSources, reconnectPending, failed, playRequested, rendering}; expected (PlaybackStatus name).",
+  "cases": [
+    {"name": "no sources", "inputs": {"hasSources": false, "reconnectPending": false, "failed": false, "playRequested": false, "rendering": false}, "expected": "idle"},
+    {"name": "no sources wins over everything", "inputs": {"hasSources": false, "reconnectPending": true, "failed": true, "playRequested": true, "rendering": true}, "expected": "idle"},
+    {"name": "sources set, never started", "inputs": {"hasSources": true, "reconnectPending": false, "failed": false, "playRequested": false, "rendering": false}, "expected": "paused"},
+    {"name": "connecting or buffering", "inputs": {"hasSources": true, "reconnectPending": false, "failed": false, "playRequested": true, "rendering": false}, "expected": "loading"},
+    {"name": "audible", "inputs": {"hasSources": true, "reconnectPending": false, "failed": false, "playRequested": true, "rendering": true}, "expected": "playing"},
+    {"name": "rendering without a recorded request", "inputs": {"hasSources": true, "reconnectPending": false, "failed": false, "playRequested": false, "rendering": true}, "expected": "playing"},
+    {"name": "reconnect pending", "inputs": {"hasSources": true, "reconnectPending": true, "failed": false, "playRequested": true, "rendering": false}, "expected": "loading"},
+    {"name": "reconnect pending wins over failed", "inputs": {"hasSources": true, "reconnectPending": true, "failed": true, "playRequested": true, "rendering": false}, "expected": "loading"},
+    {"name": "reconnect pending wins over rendering", "inputs": {"hasSources": true, "reconnectPending": true, "failed": false, "playRequested": true, "rendering": true}, "expected": "loading"},
+    {"name": "reconnect pending without play request", "inputs": {"hasSources": true, "reconnectPending": true, "failed": false, "playRequested": false, "rendering": false}, "expected": "loading"},
+    {"name": "gave up", "inputs": {"hasSources": true, "reconnectPending": false, "failed": true, "playRequested": false, "rendering": false}, "expected": "error"},
+    {"name": "failed wins over play requested", "inputs": {"hasSources": true, "reconnectPending": false, "failed": true, "playRequested": true, "rendering": false}, "expected": "error"},
+    {"name": "failed wins over rendering", "inputs": {"hasSources": true, "reconnectPending": false, "failed": true, "playRequested": true, "rendering": true}, "expected": "error"}
+  ]
+}

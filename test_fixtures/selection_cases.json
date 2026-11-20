@@ -1,0 +1,203 @@
+{
+  "_schema": "setSources selection rules 1-3 (5.0 plan section 4.1, row 22). Each case: name; old (sources before the call); oldIndex (current index before the call, null when old is empty); new (sources passed to setSources); initialIndex (null when omitted); expectedIndex (current index after the call, null when new is empty); expectedStream: 'keep' when the current source after the call has the same id, url and headers as before (stream untouched), otherwise 'close' (old stream closed or there was none, status paused). A source is {id?, url, title?, artwork?, headers?}; id defaults to url, headers to {}.",
+  "cases": [
+    {
+      "name": "first list, no initialIndex",
+      "old": [],
+      "oldIndex": null,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "first list, initialIndex 1",
+      "old": [],
+      "oldIndex": null,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": 1,
+      "expectedIndex": 1,
+      "expectedStream": "close"
+    },
+    {
+      "name": "same list again",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 1,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "reordered, current still at the same index",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "c", "url": "https://c.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "a", "url": "https://a.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 1,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "reordered, current moves",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "b", "url": "https://b.example/s"}, {"id": "a", "url": "https://a.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "current removed",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "last entry was current and is removed",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 2,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "entirely new list",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "c", "url": "https://c.example/s"}, {"id": "d", "url": "https://d.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "empty list",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 0,
+      "new": [],
+      "initialIndex": null,
+      "expectedIndex": null,
+      "expectedStream": "close"
+    },
+    {
+      "name": "explicit initialIndex moves away from current",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "initialIndex": 2,
+      "expectedIndex": 2,
+      "expectedStream": "close"
+    },
+    {
+      "name": "explicit initialIndex equal to current",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "c", "url": "https://c.example/s"}],
+      "initialIndex": 1,
+      "expectedIndex": 1,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "explicit initialIndex points at the current source after a reorder",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "b", "url": "https://b.example/s"}, {"id": "a", "url": "https://a.example/s"}],
+      "initialIndex": 0,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "duplicate ids, same index still matches",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "x", "url": "https://x.example/s"}, {"id": "b", "url": "https://b.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 1,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "duplicate ids, first match wins",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 1,
+      "new": [{"id": "b", "url": "https://b.example/s"}, {"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "title changed only",
+      "old": [{"id": "a", "url": "https://a.example/s", "title": "A"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/s", "title": "A renamed"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "artwork changed only",
+      "old": [{"id": "a", "url": "https://a.example/s", "artwork": "https://a.example/1.png"}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/s", "artwork": "https://a.example/2.png"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "url changed, same id",
+      "old": [{"id": "a", "url": "https://a.example/s"}, {"id": "b", "url": "https://b.example/s"}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/new"}, {"id": "b", "url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "header value changed",
+      "old": [{"id": "a", "url": "https://a.example/s", "headers": {"Authorization": "Bearer 1"}}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/s", "headers": {"Authorization": "Bearer 2"}}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "header added",
+      "old": [{"id": "a", "url": "https://a.example/s"}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/s", "headers": {"X-Token": "t"}}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    },
+    {
+      "name": "same headers in a different order",
+      "old": [{"id": "a", "url": "https://a.example/s", "headers": {"A": "1", "B": "2"}}],
+      "oldIndex": 0,
+      "new": [{"id": "a", "url": "https://a.example/s", "headers": {"B": "2", "A": "1"}}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "id defaults to url",
+      "old": [{"url": "https://a.example/s"}, {"url": "https://b.example/s"}],
+      "oldIndex": 1,
+      "new": [{"url": "https://b.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "keep"
+    },
+    {
+      "name": "defaulted id matches an explicit id, but the url differs",
+      "old": [{"id": "a", "url": "https://a.example/s"}],
+      "oldIndex": 0,
+      "new": [{"url": "a"}, {"id": "a", "url": "https://a.example/s"}],
+      "initialIndex": null,
+      "expectedIndex": 0,
+      "expectedStream": "close"
+    }
+  ]
+}

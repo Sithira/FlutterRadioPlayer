@@ -1,0 +1,25 @@
+{
+  "_schema": "Source URL check (5.0 plan section 4.1 RadioSource.url, row 9). Each case: input (the RadioSource.url string); valid: true only for an absolute http or https URL (scheme case-insensitive) with a non-empty host. An invalid URL fails with invalidSource when played, without a network request.",
+  "cases": [
+    {"input": "https://example.com/stream", "valid": true},
+    {"input": "http://example.com:8000/live.mp3", "valid": true},
+    {"input": "HTTPS://EXAMPLE.COM/stream", "valid": true},
+    {"input": "https://example.com/stream?icy=https#top", "valid": true},
+    {"input": "https://user:pass@example.com/stream", "valid": true},
+    {"input": "http://127.0.0.1:8080/stream", "valid": true},
+    {"input": "http://[::1]:8000/stream", "valid": true},
+    {"input": "https://radio.example.com", "valid": true},
+    {"input": "not a url", "valid": false},
+    {"input": "", "valid": false},
+    {"input": "ftp://example.com/stream", "valid": false},
+    {"input": "rtsp://example.com/live", "valid": false},
+    {"input": "file:///sdcard/stream.mp3", "valid": false},
+    {"input": "http://", "valid": false},
+    {"input": "http:///stream", "valid": false},
+    {"input": "https:example.com/stream", "valid": false},
+    {"input": "/relative/path.mp3", "valid": false},
+    {"input": "stream.mp3", "valid": false},
+    {"input": "example.com/stream", "valid": false},
+    {"input": "//example.com/stream", "valid": false}
+  ]
+}
