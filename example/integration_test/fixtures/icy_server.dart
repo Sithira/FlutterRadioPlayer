@@ -134,7 +134,9 @@ class IcyServer {
     var frameOffset = 0;
     var untilMetadata = metaInterval;
     var open = true;
-    unawaited(socket.done.then((_) => open = false, onError: (_) => open = false));
+    unawaited(
+      socket.done.then((_) => open = false, onError: (_) => open = false),
+    );
 
     while (open && _streams.contains(socket)) {
       final out = BytesBuilder(copy: false);
