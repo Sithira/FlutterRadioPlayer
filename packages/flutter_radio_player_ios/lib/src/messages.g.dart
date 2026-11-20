@@ -117,10 +117,14 @@ enum RadioPlayerErrorCodeMessage {
 
 class RadioSourceMessage {
   RadioSourceMessage({
+    required this.id,
     required this.url,
     this.title,
     this.artwork,
+    required this.headers,
   });
+
+  String id;
 
   String url;
 
@@ -128,11 +132,15 @@ class RadioSourceMessage {
 
   String? artwork;
 
+  Map<String, String> headers;
+
   List<Object?> _toList() {
     return <Object?>[
+      id,
       url,
       title,
       artwork,
+      headers,
     ];
   }
 
@@ -142,9 +150,11 @@ class RadioSourceMessage {
   static RadioSourceMessage decode(Object result) {
     result as List<Object?>;
     return RadioSourceMessage(
-      url: result[0]! as String,
-      title: result[1] as String?,
-      artwork: result[2] as String?,
+      id: result[0]! as String,
+      url: result[1]! as String,
+      title: result[2] as String?,
+      artwork: result[3] as String?,
+      headers: (result[4]! as Map<Object?, Object?>).cast<String, String>(),
     );
   }
 
@@ -157,7 +167,7 @@ class RadioSourceMessage {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(url, other.url) && _deepEquals(title, other.title) && _deepEquals(artwork, other.artwork);
+    return _deepEquals(id, other.id) && _deepEquals(url, other.url) && _deepEquals(title, other.title) && _deepEquals(artwork, other.artwork) && _deepEquals(headers, other.headers);
   }
 
   @override
@@ -166,7 +176,7 @@ class RadioSourceMessage {
 
   @override
   String toString() {
-    return 'RadioSourceMessage(url: $url, title: $title, artwork: $artwork)';
+    return 'RadioSourceMessage(id: $id, url: $url, title: $title, artwork: $artwork, headers: $headers)';
   }
 }
 
@@ -223,6 +233,7 @@ class RadioPlayerErrorMessage {
 class RadioPlayerStateMessage {
   RadioPlayerStateMessage({
     required this.status,
+    required this.sources,
     this.currentIndex,
     this.nowPlayingTitle,
     required this.volume,
@@ -230,6 +241,8 @@ class RadioPlayerStateMessage {
   });
 
   PlaybackStatusMessage status;
+
+  List<RadioSourceMessage> sources;
 
   int? currentIndex;
 
@@ -242,6 +255,7 @@ class RadioPlayerStateMessage {
   List<Object?> _toList() {
     return <Object?>[
       status,
+      sources,
       currentIndex,
       nowPlayingTitle,
       volume,
@@ -256,10 +270,11 @@ class RadioPlayerStateMessage {
     result as List<Object?>;
     return RadioPlayerStateMessage(
       status: result[0]! as PlaybackStatusMessage,
-      currentIndex: result[1] as int?,
-      nowPlayingTitle: result[2] as String?,
-      volume: result[3]! as double,
-      error: result[4] as RadioPlayerErrorMessage?,
+      sources: (result[1]! as List<Object?>).cast<RadioSourceMessage>(),
+      currentIndex: result[2] as int?,
+      nowPlayingTitle: result[3] as String?,
+      volume: result[4]! as double,
+      error: result[5] as RadioPlayerErrorMessage?,
     );
   }
 
@@ -272,7 +287,7 @@ class RadioPlayerStateMessage {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(status, other.status) && _deepEquals(currentIndex, other.currentIndex) && _deepEquals(nowPlayingTitle, other.nowPlayingTitle) && _deepEquals(volume, other.volume) && _deepEquals(error, other.error);
+    return _deepEquals(status, other.status) && _deepEquals(sources, other.sources) && _deepEquals(currentIndex, other.currentIndex) && _deepEquals(nowPlayingTitle, other.nowPlayingTitle) && _deepEquals(volume, other.volume) && _deepEquals(error, other.error);
   }
 
   @override
@@ -281,7 +296,67 @@ class RadioPlayerStateMessage {
 
   @override
   String toString() {
-    return 'RadioPlayerStateMessage(status: $status, currentIndex: $currentIndex, nowPlayingTitle: $nowPlayingTitle, volume: $volume, error: $error)';
+    return 'RadioPlayerStateMessage(status: $status, sources: $sources, currentIndex: $currentIndex, nowPlayingTitle: $nowPlayingTitle, volume: $volume, error: $error)';
+  }
+}
+
+class RadioPlayerOptionsMessage {
+  RadioPlayerOptionsMessage({
+    required this.wrapAround,
+    required this.reconnectGiveUpAfterMillis,
+    required this.androidStopOnTaskRemoved,
+    this.androidNotificationIcon,
+  });
+
+  bool wrapAround;
+
+  int reconnectGiveUpAfterMillis;
+
+  bool androidStopOnTaskRemoved;
+
+  String? androidNotificationIcon;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      wrapAround,
+      reconnectGiveUpAfterMillis,
+      androidStopOnTaskRemoved,
+      androidNotificationIcon,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static RadioPlayerOptionsMessage decode(Object result) {
+    result as List<Object?>;
+    return RadioPlayerOptionsMessage(
+      wrapAround: result[0]! as bool,
+      reconnectGiveUpAfterMillis: result[1]! as int,
+      androidStopOnTaskRemoved: result[2]! as bool,
+      androidNotificationIcon: result[3] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! RadioPlayerOptionsMessage || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(wrapAround, other.wrapAround) && _deepEquals(reconnectGiveUpAfterMillis, other.reconnectGiveUpAfterMillis) && _deepEquals(androidStopOnTaskRemoved, other.androidStopOnTaskRemoved) && _deepEquals(androidNotificationIcon, other.androidNotificationIcon);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'RadioPlayerOptionsMessage(wrapAround: $wrapAround, reconnectGiveUpAfterMillis: $reconnectGiveUpAfterMillis, androidStopOnTaskRemoved: $androidStopOnTaskRemoved, androidNotificationIcon: $androidNotificationIcon)';
   }
 }
 
@@ -308,6 +383,9 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is RadioPlayerStateMessage) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
+    }    else if (value is RadioPlayerOptionsMessage) {
+      buffer.putUint8(134);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -328,6 +406,8 @@ class _PigeonCodec extends StandardMessageCodec {
         return RadioPlayerErrorMessage.decode(readValue(buffer)!);
       case 133:
         return RadioPlayerStateMessage.decode(readValue(buffer)!);
+      case 134:
+        return RadioPlayerOptionsMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -353,93 +433,62 @@ class RadioPlayerHostApi {
   final String pigeonVar_messageChannelSuffix;
 
 
-  Future<void> initialize(List<RadioSourceMessage> sources, bool playWhenReady) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.initialize$pigeonVar_messageChannelSuffix';
+  Future<RadioPlayerStateMessage> setSources(List<RadioSourceMessage> sources, int? initialIndex, bool autoPlay) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setSources$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sources, playWhenReady]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sources, initialIndex, autoPlay]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,
         pigeonVar_channelName,
-        isNullValid: true,
+        isNullValid: false,
     )
     ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<void> play() async {
+  Future<RadioPlayerStateMessage> setOptions(RadioPlayerOptionsMessage options) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setOptions$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[options]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
+  }
+
+  Future<RadioPlayerStateMessage> play(int? index) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.play$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[index]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,
         pigeonVar_channelName,
-        isNullValid: true,
+        isNullValid: false,
     )
     ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<void> pause() async {
+  Future<RadioPlayerStateMessage> pause() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.pause$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-  }
-
-  Future<void> playOrPause() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.playOrPause$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-  }
-
-  Future<void> setVolume(double volume) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setVolume$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[volume]);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-  }
-
-  Future<double> getVolume() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getVolume$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -453,11 +502,11 @@ class RadioPlayerHostApi {
         isNullValid: false,
     )
     ;
-    return pigeonVar_replyValue! as double;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<void> nextSource() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.nextSource$pigeonVar_messageChannelSuffix';
+  Future<RadioPlayerStateMessage> playOrPause() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.playOrPause$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -465,16 +514,17 @@ class RadioPlayerHostApi {
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,
         pigeonVar_channelName,
-        isNullValid: true,
+        isNullValid: false,
     )
     ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<void> previousSource() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.previousSource$pigeonVar_messageChannelSuffix';
+  Future<RadioPlayerStateMessage> stop() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.stop$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -482,33 +532,17 @@ class RadioPlayerHostApi {
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,
         pigeonVar_channelName,
-        isNullValid: true,
+        isNullValid: false,
     )
     ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<void> jumpToSourceAtIndex(int index) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.jumpToSourceAtIndex$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[index]);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-  }
-
-  Future<void> dispose() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.dispose$pigeonVar_messageChannelSuffix';
+  Future<RadioPlayerStateMessage> next() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.next$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -516,22 +550,41 @@ class RadioPlayerHostApi {
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,
         pigeonVar_channelName,
-        isNullValid: true,
+        isNullValid: false,
     )
     ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
   }
 
-  Future<RadioPlayerStateMessage> getState() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getState$pigeonVar_messageChannelSuffix';
+  Future<RadioPlayerStateMessage> previous() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.previous$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as RadioPlayerStateMessage;
+  }
+
+  Future<RadioPlayerStateMessage> setVolume(double volume) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setVolume$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[volume]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
         pigeonVar_replyList,

@@ -1,110 +1,110 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_radio_player_ios/flutter_radio_player_ios.dart';
 import 'package:flutter_radio_player_ios/src/messages.g.dart';
 import 'package:flutter_radio_player_platform_interface/flutter_radio_player_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class FakeHostApi implements RadioPlayerHostApi {
-  final List<String> calls = [];
-  RadioPlayerStateMessage stateOnGet = _message();
+RadioPlayerStateMessage _message({
+  PlaybackStatusMessage status = PlaybackStatusMessage.paused,
+  double volume = 1.0,
+  String? title,
+  RadioPlayerErrorMessage? error,
+}) => RadioPlayerStateMessage(
+  status: status,
+  sources: [
+    RadioSourceMessage(
+      id: 'a',
+      url: 'https://a.example/s',
+      title: 'A',
+      artwork: 'art.png',
+      headers: {'Authorization': 'Bearer x'},
+    ),
+    RadioSourceMessage(
+      id: 'https://b.example/s',
+      url: 'https://b.example/s',
+      headers: {},
+    ),
+  ],
+  currentIndex: 0,
+  nowPlayingTitle: title,
+  volume: volume,
+  error: error,
+);
+
+class _FakeHostApi implements RadioPlayerHostApi {
+  final calls = <String>[];
+  RadioPlayerStateMessage reply = _message();
+  PlatformException? error;
+  List<RadioSourceMessage>? sources;
+  RadioPlayerOptionsMessage? options;
+
+  Future<RadioPlayerStateMessage> _record(String call) {
+    calls.add(call);
+    final error = this.error;
+    return error == null ? Future.value(reply) : Future.error(error);
+  }
 
   @override
-  Future<void> initialize(
+  Future<RadioPlayerStateMessage> setSources(
     List<RadioSourceMessage> sources,
-    bool playWhenReady,
-  ) async {
-    calls.add('initialize:${sources.length}:$playWhenReady');
+    int? initialIndex,
+    bool autoPlay,
+  ) {
+    this.sources = sources;
+    return _record('setSources(${sources.length}, $initialIndex, $autoPlay)');
   }
 
   @override
-  Future<void> play() async => calls.add('play');
-
-  @override
-  Future<void> pause() async => calls.add('pause');
-
-  @override
-  Future<void> playOrPause() async => calls.add('playOrPause');
-
-  @override
-  Future<void> setVolume(double volume) async => calls.add('setVolume:$volume');
-
-  @override
-  Future<double> getVolume() async {
-    calls.add('getVolume');
-    return 0.25;
+  Future<RadioPlayerStateMessage> setOptions(
+    RadioPlayerOptionsMessage options,
+  ) {
+    this.options = options;
+    return _record('setOptions');
   }
 
   @override
-  Future<void> nextSource() async => calls.add('nextSource');
+  Future<RadioPlayerStateMessage> play(int? index) => _record('play($index)');
 
   @override
-  Future<void> previousSource() async => calls.add('previousSource');
+  Future<RadioPlayerStateMessage> pause() => _record('pause');
 
   @override
-  Future<void> jumpToSourceAtIndex(int index) async =>
-      calls.add('jumpToSourceAtIndex:$index');
+  Future<RadioPlayerStateMessage> playOrPause() => _record('playOrPause');
 
   @override
-  Future<void> dispose() async => calls.add('dispose');
+  Future<RadioPlayerStateMessage> stop() => _record('stop');
 
   @override
-  Future<RadioPlayerStateMessage> getState() async {
-    calls.add('getState');
-    return stateOnGet;
-  }
+  Future<RadioPlayerStateMessage> next() => _record('next');
+
+  @override
+  Future<RadioPlayerStateMessage> previous() => _record('previous');
+
+  @override
+  Future<RadioPlayerStateMessage> setVolume(double volume) =>
+      _record('setVolume($volume)');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-RadioPlayerStateMessage _message({
-  PlaybackStatusMessage status = PlaybackStatusMessage.idle,
-  int? currentIndex,
-  String? title,
-  double volume = 0.5,
-  RadioPlayerErrorMessage? error,
-}) {
-  return RadioPlayerStateMessage(
-    status: status,
-    currentIndex: currentIndex,
-    nowPlayingTitle: title,
-    volume: volume,
-    error: error,
-  );
-}
-
-const _sources = [
-  RadioSource(url: 'https://a.example/stream', title: 'A'),
-  RadioSource(url: 'https://b.example/stream', title: 'B'),
-];
-
 void main() {
-  late FakeHostApi hostApi;
+  late _FakeHostApi host;
   late StreamController<RadioPlayerStateMessage> events;
-  late int nativeSubscriptions;
-  late FlutterRadioPlayerIos player;
+  late FlutterRadioPlayerIos platform;
 
   setUp(() {
-    hostApi = FakeHostApi();
-    nativeSubscriptions = 0;
-    events = StreamController<RadioPlayerStateMessage>.broadcast();
-    player = FlutterRadioPlayerIos(
-      hostApi: hostApi,
-      stateEvents: () {
-        nativeSubscriptions++;
-        return events.stream;
-      },
+    host = _FakeHostApi();
+    events = StreamController.broadcast();
+    platform = FlutterRadioPlayerIos(
+      hostApi: host,
+      stateEvents: () => events.stream,
     );
   });
 
-  tearDown(() async {
-    await events.close();
-  });
-
-  Future<void> pump() => Future<void>.delayed(Duration.zero);
-
-  test('registerWith sets platform instance', () {
+  test('registerWith installs the iOS implementation', () {
     FlutterRadioPlayerIos.registerWith();
     expect(
       FlutterRadioPlayerPlatform.instance,
@@ -112,378 +112,182 @@ void main() {
     );
   });
 
-  group('delegation', () {
-    test('forwards transport calls to the host api', () async {
-      await player.initialize(_sources, playWhenReady: true);
-      await player.play();
-      await player.pause();
-      await player.playOrPause();
-      await player.setVolume(0.3);
-      expect(await player.getVolume(), 0.25);
-      await player.nextSource();
-      await player.previousSource();
-      await player.jumpToSourceAtIndex(1);
-      expect(hostApi.calls, [
-        'initialize:2:true',
-        'play',
+  group('mapping', () {
+    test('state message to model', () {
+      final state = stateFromMessage(
+        _message(
+          status: PlaybackStatusMessage.loading,
+          volume: 0.4,
+          title: 'Artist - Song',
+          error: RadioPlayerErrorMessage(
+            code: RadioPlayerErrorCodeMessage.httpStatus,
+            message: '503',
+          ),
+        ),
+      );
+      expect(state.status, PlaybackStatus.loading);
+      expect(state.sources, const [
+        RadioSource(
+          id: 'a',
+          url: 'https://a.example/s',
+          title: 'A',
+          artwork: 'art.png',
+          headers: {'Authorization': 'Bearer x'},
+        ),
+        RadioSource(url: 'https://b.example/s'),
+      ]);
+      expect(state.currentIndex, 0);
+      expect(state.nowPlaying, const NowPlayingInfo(title: 'Artist - Song'));
+      expect(state.volume, 0.4);
+      expect(
+        state.error,
+        const RadioPlayerError(
+          code: RadioPlayerErrorCode.httpStatus,
+          message: '503',
+        ),
+      );
+      expect(state.isReconnecting, isTrue);
+    });
+
+    test('every status and error code maps by name', () {
+      for (final status in PlaybackStatusMessage.values) {
+        expect(
+          stateFromMessage(_message(status: status)).status.name,
+          status.name,
+        );
+      }
+      for (final code in RadioPlayerErrorCodeMessage.values) {
+        final error = RadioPlayerErrorMessage(code: code, message: 'm');
+        expect(
+          stateFromMessage(_message(error: error)).error!.code.name,
+          code.name,
+        );
+      }
+    });
+
+    test('a missing or empty title is no nowPlaying', () {
+      expect(stateFromMessage(_message()).nowPlaying, isNull);
+      expect(stateFromMessage(_message(title: '')).nowPlaying, isNull);
+    });
+
+    test('mapped sources and headers are unmodifiable', () {
+      final state = stateFromMessage(_message());
+      expect(
+        () => state.sources.add(const RadioSource(url: 'x')),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => state.sources.first.headers['k'] = 'v',
+        throwsUnsupportedError,
+      );
+    });
+
+    test('source and options to messages', () {
+      final source = sourceToMessage(
+        const RadioSource(
+          url: 'https://a.example/s',
+          title: 'A',
+          headers: {'X': '1'},
+        ),
+      );
+      expect(source.id, 'https://a.example/s');
+      expect(source.headers, {'X': '1'});
+
+      final options = optionsToMessage(
+        const RadioPlayerOptions(
+          wrapAround: false,
+          reconnect: ReconnectPolicy(giveUpAfter: Duration(seconds: 90)),
+          android: AndroidOptions(
+            stopOnTaskRemoved: false,
+            notificationIcon: 'ic_radio',
+          ),
+        ),
+      );
+      expect(options.wrapAround, isFalse);
+      expect(options.reconnectGiveUpAfterMillis, 90000);
+      expect(options.androidStopOnTaskRemoved, isFalse);
+      expect(options.androidNotificationIcon, 'ic_radio');
+    });
+  });
+
+  group('commands', () {
+    test('every command returns the reply state', () async {
+      final commands = <Future<RadioPlayerState> Function()>[
+        () => platform.setSources(const [RadioSource(url: 'u')]),
+        () => platform.setOptions(const RadioPlayerOptions()),
+        () => platform.play(),
+        () => platform.pause(),
+        () => platform.playOrPause(),
+        () => platform.stop(),
+        () => platform.next(),
+        () => platform.previous(),
+        () => platform.setVolume(0.5),
+      ];
+      for (final (i, command) in commands.indexed) {
+        host.reply = _message(volume: i / 10);
+        expect((await command()).volume, i / 10);
+      }
+      expect(host.calls, [
+        'setSources(1, null, false)',
+        'setOptions',
+        'play(null)',
         'pause',
         'playOrPause',
-        'setVolume:0.3',
-        'getVolume',
-        'nextSource',
-        'previousSource',
-        'jumpToSourceAtIndex:1',
-      ]);
-    });
-  });
-
-  group('state mapping', () {
-    test('state is the default before any snapshot', () {
-      expect(player.state, const RadioPlayerState());
-    });
-
-    test('maps all five statuses', () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      for (final status in PlaybackStatusMessage.values) {
-        events.add(_message(status: status));
-      }
-      await pump();
-      expect(states.map((s) => s.status), PlaybackStatus.values);
-    });
-
-    test('resolves the current source from the index', () async {
-      await player.initialize(_sources);
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      events.add(_message(currentIndex: 1));
-      events.add(_message(currentIndex: 5));
-      events.add(_message(currentIndex: -1));
-      events.add(_message());
-      await pump();
-      expect(states[0].currentIndex, 1);
-      expect(states[0].currentSource, _sources[1]);
-      expect(states[1].currentIndex, 5);
-      expect(states[1].currentSource, isNull);
-      expect(states[2].currentSource, isNull);
-      expect(states[3].currentIndex, isNull);
-      expect(states[3].currentSource, isNull);
-    });
-
-    test('maps title and volume', () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      events.add(_message(title: 'Song', volume: 0.8));
-      events.add(_message());
-      await pump();
-      expect(states[0].nowPlaying, const NowPlayingInfo(title: 'Song'));
-      expect(states[0].volume, 0.8);
-      expect(states[1].nowPlaying, isNull);
-    });
-
-    test('maps every error code and message', () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      for (final code in RadioPlayerErrorCodeMessage.values) {
-        events.add(
-          _message(
-            status: PlaybackStatusMessage.error,
-            error: RadioPlayerErrorMessage(code: code, message: 'm-$code'),
-          ),
-        );
-      }
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      await pump();
-      for (var i = 0; i < RadioPlayerErrorCodeMessage.values.length; i++) {
-        expect(states[i].status, PlaybackStatus.error);
-        expect(states[i].error?.code, RadioPlayerErrorCode.values[i]);
-        expect(
-          states[i].error?.message,
-          'm-${RadioPlayerErrorCodeMessage.values[i]}',
-        );
-      }
-      expect(states.last.error, isNull);
-    });
-  });
-
-  group('stateStream', () {
-    test('uses a single native subscription', () async {
-      player.stateStream.listen((_) {});
-      player.stateStream.listen((_) {});
-      player.isPlayingStream.listen((_) {});
-      player.nowPlayingStream.listen((_) {});
-      player.volumeStream.listen((_) {});
-      await player.initialize(_sources);
-      expect(player.state, const RadioPlayerState());
-      expect(nativeSubscriptions, 1);
-    });
-
-    test('is the same stream object on every access', () {
-      expect(identical(player.stateStream, player.stateStream), isTrue);
-      expect(player.stateStream.isBroadcast, isTrue);
-    });
-
-    test('cancelling one listener keeps the other receiving', () async {
-      final first = <RadioPlayerState>[];
-      final second = <RadioPlayerState>[];
-      final firstSub = player.stateStream.listen(first.add);
-      player.stateStream.listen(second.add);
-      events.add(_message(status: PlaybackStatusMessage.loading));
-      await pump();
-      await firstSub.cancel();
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      await pump();
-      expect(first.length, 1);
-      expect(second.map((s) => s.status), [
-        PlaybackStatus.loading,
-        PlaybackStatus.playing,
+        'stop',
+        'next',
+        'previous',
+        'setVolume(0.5)',
       ]);
     });
 
-    test('a late subscriber receives the latest snapshot first', () async {
-      player.stateStream.listen((_) {});
-      events.add(_message(status: PlaybackStatusMessage.loading));
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      await pump();
-      final late = <RadioPlayerState>[];
-      player.stateStream.listen(late.add);
-      await pump();
-      expect(late.map((s) => s.status), [PlaybackStatus.playing]);
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      await pump();
-      expect(late.map((s) => s.status), [
-        PlaybackStatus.playing,
-        PlaybackStatus.paused,
-      ]);
-      expect(player.state.status, PlaybackStatus.paused);
-    });
-
-    test('a subscriber before any snapshot gets nothing until one arrives',
-        () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      await pump();
-      expect(states, isEmpty);
-    });
-
-    test('does not emit a snapshot equal to the previous one', () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      await pump();
-      expect(states.map((s) => s.status), [
-        PlaybackStatus.playing,
-        PlaybackStatus.paused,
-        PlaybackStatus.playing,
-      ]);
-    });
-
-    test('a refresh after dispose does not repeat an identical snapshot',
-        () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      events.add(_message());
-      await pump();
-      await player.dispose();
-      await pump();
-      expect(states, [const RadioPlayerState()]);
-    });
-  });
-
-  group('legacy streams', () {
-    test('are cached broadcast streams', () {
-      expect(identical(player.isPlayingStream, player.isPlayingStream), isTrue);
-      expect(
-        identical(player.nowPlayingStream, player.nowPlayingStream),
-        isTrue,
-      );
-      expect(identical(player.volumeStream, player.volumeStream), isTrue);
-      expect(player.isPlayingStream.isBroadcast, isTrue);
-      expect(player.nowPlayingStream.isBroadcast, isTrue);
-      expect(player.volumeStream.isBroadcast, isTrue);
-    });
-
-    test('two listeners behave the same and none replays', () async {
-      player.stateStream.listen((_) {});
-      events.add(_message());
-      await pump();
-
-      final playingA = <bool>[];
-      final playingB = <bool>[];
-      final titleA = <String?>[];
-      final titleB = <String?>[];
-      final volumeA = <VolumeInfo>[];
-      final volumeB = <VolumeInfo>[];
-      player.isPlayingStream.listen(playingA.add);
-      player.isPlayingStream.listen(playingB.add);
-      player.nowPlayingStream.listen((e) => titleA.add(e.title));
-      player.nowPlayingStream.listen((e) => titleB.add(e.title));
-      player.volumeStream.listen(volumeA.add);
-      player.volumeStream.listen(volumeB.add);
-      await pump();
-      expect(playingA, isEmpty);
-      expect(titleA, isEmpty);
-      expect(volumeA, isEmpty);
-
-      events.add(
-        _message(
-          status: PlaybackStatusMessage.playing,
-          title: 'X',
-          volume: 0.7,
+    test('calls reach the host synchronously, in order', () {
+      unawaited(
+        platform.setSources(
+          const [RadioSource(url: 'u')],
+          initialIndex: 0,
+          autoPlay: true,
         ),
       );
-      await pump();
-      expect(playingA, [true]);
-      expect(playingB, [true]);
-      expect(titleA, ['X']);
-      expect(titleB, ['X']);
-      expect(volumeA, [const VolumeInfo(volume: 0.7, isMuted: false)]);
-      expect(volumeB, volumeA);
+      unawaited(platform.play(index: 2));
+      expect(host.calls, ['setSources(1, 0, true)', 'play(2)']);
     });
 
-    test('the first snapshot is only a baseline', () async {
-      final playing = <bool>[];
-      final titles = <String?>[];
-      final volumes = <VolumeInfo>[];
-      player.isPlayingStream.listen(playing.add);
-      player.nowPlayingStream.listen((e) => titles.add(e.title));
-      player.volumeStream.listen(volumes.add);
-      events.add(
-        _message(
-          status: PlaybackStatusMessage.playing,
-          title: 'X',
-          volume: 0.9,
+    test('setSources sends ids, urls and headers', () async {
+      await platform.setSources(const [
+        RadioSource(url: 'https://a.example/s', id: 'a', headers: {'X': '1'}),
+      ]);
+      expect(host.sources!.single.id, 'a');
+      expect(host.sources!.single.headers, {'X': '1'});
+    });
+
+    test('invalid_index becomes a RangeError', () async {
+      host.error = PlatformException(
+        code: 'invalid_index',
+        message: 'index 5 of 2',
+      );
+      await expectLater(
+        platform.play(index: 5),
+        throwsA(
+          isA<RangeError>().having((e) => e.message, 'message', 'index 5 of 2'),
         ),
       );
-      await pump();
-      expect(playing, isEmpty);
-      expect(titles, isEmpty);
-      expect(volumes, isEmpty);
     });
 
-    test('loading and playing on isPlayingStream', () async {
-      final playing = <bool>[];
-      player.isPlayingStream.listen(playing.add);
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      events.add(_message(status: PlaybackStatusMessage.loading));
-      await pump();
-      expect(playing, [true]);
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      events.add(_message(status: PlaybackStatusMessage.playing, volume: 0.6));
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      await pump();
-      expect(playing, [true, false]);
-    });
-
-    test('a later playing snapshot emits true', () async {
-      final playing = <bool>[];
-      player.isPlayingStream.listen(playing.add);
-      events.add(_message(status: PlaybackStatusMessage.paused));
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      await pump();
-      expect(playing, [true]);
-    });
-
-    test('an error snapshot counts as not playing', () async {
-      final playing = <bool>[];
-      player.isPlayingStream.listen(playing.add);
-      events.add(_message(status: PlaybackStatusMessage.playing));
-      events.add(
-        _message(
-          status: PlaybackStatusMessage.error,
-          error: RadioPlayerErrorMessage(
-            code: RadioPlayerErrorCodeMessage.network,
-            message: 'offline',
-          ),
-        ),
-      );
-      await pump();
-      expect(playing, [false]);
-    });
-
-    test('title null then X emits twice and a repeated X once', () async {
-      final titles = <String?>[];
-      player.nowPlayingStream.listen((e) => titles.add(e.title));
-      events.add(_message(title: 'Old'));
-      events.add(_message());
-      events.add(_message(title: 'X'));
-      events.add(_message(title: 'X', volume: 0.4));
-      await pump();
-      expect(titles, [null, 'X']);
-    });
-
-    test('volume zero is muted', () async {
-      final volumes = <VolumeInfo>[];
-      player.volumeStream.listen(volumes.add);
-      events.add(_message());
-      events.add(_message(volume: 0));
-      await pump();
-      expect(volumes, [const VolumeInfo(volume: 0, isMuted: true)]);
+    test('other platform errors pass through', () async {
+      host.error = PlatformException(code: 'other');
+      await expectLater(platform.pause(), throwsA(isA<PlatformException>()));
     });
   });
 
-  group('dispose', () {
-    test('calls the host api then refreshes the state', () async {
-      await player.dispose();
-      expect(hostApi.calls, ['dispose', 'getState']);
-    });
-
-    test('clears sources and refreshes the cached state', () async {
-      await player.initialize(_sources);
-      events.add(
-        _message(status: PlaybackStatusMessage.playing, currentIndex: 0),
-      );
-      await pump();
-      expect(player.state.currentSource, _sources[0]);
-
-      hostApi.stateOnGet = _message();
-      await player.dispose();
-      expect(hostApi.calls.last, 'getState');
-      expect(player.state, const RadioPlayerState());
-
-      events
-          .add(_message(status: PlaybackStatusMessage.paused, currentIndex: 0));
-      await pump();
-      expect(player.state.currentSource, isNull);
-    });
-
-    test('initialize with a new list re-derives the current source', () async {
-      const other = [RadioSource(url: 'https://c.example/stream', title: 'C')];
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      await player.initialize(_sources);
-      events.add(
-        _message(status: PlaybackStatusMessage.paused, currentIndex: 0),
-      );
-      await pump();
-      expect(player.state.currentSource, _sources[0]);
-
-      await player.initialize(other);
-      await pump();
-      expect(player.state.currentSource, other[0]);
-      expect(states.map((s) => s.currentSource), [_sources[0], other[0]]);
-    });
-
-    test('dispose re-derives the current source from an equal snapshot',
-        () async {
-      final states = <RadioPlayerState>[];
-      player.stateStream.listen(states.add);
-      await player.initialize(_sources);
-      final message =
-          _message(status: PlaybackStatusMessage.paused, currentIndex: 0);
-      events.add(message);
-      await pump();
-      expect(player.state.currentSource, _sources[0]);
-
-      hostApi.stateOnGet = message;
-      await player.dispose();
-      await pump();
-      expect(player.state.currentIndex, 0);
-      expect(player.state.currentSource, isNull);
-      expect(states.last.currentSource, isNull);
-    });
+  test('stateStream maps native snapshots', () async {
+    final states = <RadioPlayerState>[];
+    platform.stateStream.listen(states.add);
+    events
+      ..add(_message(status: PlaybackStatusMessage.playing))
+      ..add(_message(status: PlaybackStatusMessage.playing));
+    await pumpEventQueue();
+    expect(states, hasLength(2));
+    expect(states.first.status, PlaybackStatus.playing);
+    expect(identical(platform.stateStream, platform.stateStream), isTrue);
   });
 }

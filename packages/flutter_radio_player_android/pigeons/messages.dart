@@ -9,9 +9,11 @@ import 'package:pigeon/pigeon.dart';
   ),
 ))
 class RadioSourceMessage {
+  late String id;
   late String url;
   late String? title;
   late String? artwork;
+  late Map<String, String> headers;
 }
 
 enum PlaybackStatusMessage { idle, loading, playing, paused, error }
@@ -33,36 +35,44 @@ class RadioPlayerErrorMessage {
 
 class RadioPlayerStateMessage {
   late PlaybackStatusMessage status;
+  late List<RadioSourceMessage> sources;
   late int? currentIndex;
   late String? nowPlayingTitle;
   late double volume;
   late RadioPlayerErrorMessage? error;
 }
 
+class RadioPlayerOptionsMessage {
+  late bool wrapAround;
+  late int reconnectGiveUpAfterMillis;
+  late bool androidStopOnTaskRemoved;
+  late String? androidNotificationIcon;
+}
+
 @HostApi()
 abstract class RadioPlayerHostApi {
   @asyncCallback
-  void initialize(List<RadioSourceMessage> sources, bool playWhenReady);
+  RadioPlayerStateMessage setSources(
+    List<RadioSourceMessage> sources,
+    int? initialIndex,
+    bool autoPlay,
+  );
   @asyncCallback
-  void play();
+  RadioPlayerStateMessage setOptions(RadioPlayerOptionsMessage options);
   @asyncCallback
-  void pause();
+  RadioPlayerStateMessage play(int? index);
   @asyncCallback
-  void playOrPause();
+  RadioPlayerStateMessage pause();
   @asyncCallback
-  void setVolume(double volume);
+  RadioPlayerStateMessage playOrPause();
   @asyncCallback
-  double getVolume();
+  RadioPlayerStateMessage stop();
   @asyncCallback
-  void nextSource();
+  RadioPlayerStateMessage next();
   @asyncCallback
-  void previousSource();
+  RadioPlayerStateMessage previous();
   @asyncCallback
-  void jumpToSourceAtIndex(int index);
-  @asyncCallback
-  void dispose();
-  @asyncCallback
-  RadioPlayerStateMessage getState();
+  RadioPlayerStateMessage setVolume(double volume);
 }
 
 @EventChannelApi()

@@ -204,46 +204,56 @@ enum RadioPlayerErrorCodeMessage: Int, CaseIterable {
 
 /// Generated class from Pigeon that represents data sent in messages.
 struct RadioSourceMessage: Hashable, CustomStringConvertible {
+  var id: String
   var url: String
   var title: String? = nil
   var artwork: String? = nil
+  var headers: [String: String]
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> RadioSourceMessage? {
-    let url = pigeonVar_list[0] as! String
-    let title: String? = nilOrValue(pigeonVar_list[1])
-    let artwork: String? = nilOrValue(pigeonVar_list[2])
+    let id = pigeonVar_list[0] as! String
+    let url = pigeonVar_list[1] as! String
+    let title: String? = nilOrValue(pigeonVar_list[2])
+    let artwork: String? = nilOrValue(pigeonVar_list[3])
+    let headers = pigeonVar_list[4] as! [String: String]
 
     return RadioSourceMessage(
+      id: id,
       url: url,
       title: title,
-      artwork: artwork
+      artwork: artwork,
+      headers: headers
     )
   }
   func toList() -> [Any?] {
     return [
+      id,
       url,
       title,
       artwork,
+      headers,
     ]
   }
   static func == (lhs: RadioSourceMessage, rhs: RadioSourceMessage) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.url, rhs.url) && MessagesPigeonInternal.deepEquals(lhs.title, rhs.title) && MessagesPigeonInternal.deepEquals(lhs.artwork, rhs.artwork)
+    return MessagesPigeonInternal.deepEquals(lhs.id, rhs.id) && MessagesPigeonInternal.deepEquals(lhs.url, rhs.url) && MessagesPigeonInternal.deepEquals(lhs.title, rhs.title) && MessagesPigeonInternal.deepEquals(lhs.artwork, rhs.artwork) && MessagesPigeonInternal.deepEquals(lhs.headers, rhs.headers)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("RadioSourceMessage")
+    MessagesPigeonInternal.deepHash(value: id, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: url, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: title, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: artwork, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: headers, hasher: &hasher)
   }
 
   public var description: String {
-    return "RadioSourceMessage(url: \(String(describing: url)), title: \(String(describing: title)), artwork: \(String(describing: artwork)))"
+    return "RadioSourceMessage(id: \(String(describing: id)), url: \(String(describing: url)), title: \(String(describing: title)), artwork: \(String(describing: artwork)), headers: \(String(describing: headers)))"
   }
 }
 
@@ -290,6 +300,7 @@ struct RadioPlayerErrorMessage: Hashable, CustomStringConvertible {
 /// Generated class from Pigeon that represents data sent in messages.
 struct RadioPlayerStateMessage: Hashable, CustomStringConvertible {
   var status: PlaybackStatusMessage
+  var sources: [RadioSourceMessage]
   var currentIndex: Int64? = nil
   var nowPlayingTitle: String? = nil
   var volume: Double
@@ -299,13 +310,15 @@ struct RadioPlayerStateMessage: Hashable, CustomStringConvertible {
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> RadioPlayerStateMessage? {
     let status = pigeonVar_list[0] as! PlaybackStatusMessage
-    let currentIndex: Int64? = nilOrValue(pigeonVar_list[1])
-    let nowPlayingTitle: String? = nilOrValue(pigeonVar_list[2])
-    let volume = pigeonVar_list[3] as! Double
-    let error: RadioPlayerErrorMessage? = nilOrValue(pigeonVar_list[4])
+    let sources = pigeonVar_list[1] as! [RadioSourceMessage]
+    let currentIndex: Int64? = nilOrValue(pigeonVar_list[2])
+    let nowPlayingTitle: String? = nilOrValue(pigeonVar_list[3])
+    let volume = pigeonVar_list[4] as! Double
+    let error: RadioPlayerErrorMessage? = nilOrValue(pigeonVar_list[5])
 
     return RadioPlayerStateMessage(
       status: status,
+      sources: sources,
       currentIndex: currentIndex,
       nowPlayingTitle: nowPlayingTitle,
       volume: volume,
@@ -315,6 +328,7 @@ struct RadioPlayerStateMessage: Hashable, CustomStringConvertible {
   func toList() -> [Any?] {
     return [
       status,
+      sources,
       currentIndex,
       nowPlayingTitle,
       volume,
@@ -325,12 +339,13 @@ struct RadioPlayerStateMessage: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.status, rhs.status) && MessagesPigeonInternal.deepEquals(lhs.currentIndex, rhs.currentIndex) && MessagesPigeonInternal.deepEquals(lhs.nowPlayingTitle, rhs.nowPlayingTitle) && MessagesPigeonInternal.deepEquals(lhs.volume, rhs.volume) && MessagesPigeonInternal.deepEquals(lhs.error, rhs.error)
+    return MessagesPigeonInternal.deepEquals(lhs.status, rhs.status) && MessagesPigeonInternal.deepEquals(lhs.sources, rhs.sources) && MessagesPigeonInternal.deepEquals(lhs.currentIndex, rhs.currentIndex) && MessagesPigeonInternal.deepEquals(lhs.nowPlayingTitle, rhs.nowPlayingTitle) && MessagesPigeonInternal.deepEquals(lhs.volume, rhs.volume) && MessagesPigeonInternal.deepEquals(lhs.error, rhs.error)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("RadioPlayerStateMessage")
     MessagesPigeonInternal.deepHash(value: status, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: sources, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: currentIndex, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: nowPlayingTitle, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: volume, hasher: &hasher)
@@ -338,7 +353,57 @@ struct RadioPlayerStateMessage: Hashable, CustomStringConvertible {
   }
 
   public var description: String {
-    return "RadioPlayerStateMessage(status: \(String(describing: status)), currentIndex: \(String(describing: currentIndex)), nowPlayingTitle: \(String(describing: nowPlayingTitle)), volume: \(String(describing: volume)), error: \(String(describing: error)))"
+    return "RadioPlayerStateMessage(status: \(String(describing: status)), sources: \(String(describing: sources)), currentIndex: \(String(describing: currentIndex)), nowPlayingTitle: \(String(describing: nowPlayingTitle)), volume: \(String(describing: volume)), error: \(String(describing: error)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct RadioPlayerOptionsMessage: Hashable, CustomStringConvertible {
+  var wrapAround: Bool
+  var reconnectGiveUpAfterMillis: Int64
+  var androidStopOnTaskRemoved: Bool
+  var androidNotificationIcon: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> RadioPlayerOptionsMessage? {
+    let wrapAround = pigeonVar_list[0] as! Bool
+    let reconnectGiveUpAfterMillis = pigeonVar_list[1] as! Int64
+    let androidStopOnTaskRemoved = pigeonVar_list[2] as! Bool
+    let androidNotificationIcon: String? = nilOrValue(pigeonVar_list[3])
+
+    return RadioPlayerOptionsMessage(
+      wrapAround: wrapAround,
+      reconnectGiveUpAfterMillis: reconnectGiveUpAfterMillis,
+      androidStopOnTaskRemoved: androidStopOnTaskRemoved,
+      androidNotificationIcon: androidNotificationIcon
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      wrapAround,
+      reconnectGiveUpAfterMillis,
+      androidStopOnTaskRemoved,
+      androidNotificationIcon,
+    ]
+  }
+  static func == (lhs: RadioPlayerOptionsMessage, rhs: RadioPlayerOptionsMessage) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.wrapAround, rhs.wrapAround) && MessagesPigeonInternal.deepEquals(lhs.reconnectGiveUpAfterMillis, rhs.reconnectGiveUpAfterMillis) && MessagesPigeonInternal.deepEquals(lhs.androidStopOnTaskRemoved, rhs.androidStopOnTaskRemoved) && MessagesPigeonInternal.deepEquals(lhs.androidNotificationIcon, rhs.androidNotificationIcon)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("RadioPlayerOptionsMessage")
+    MessagesPigeonInternal.deepHash(value: wrapAround, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: reconnectGiveUpAfterMillis, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: androidStopOnTaskRemoved, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: androidNotificationIcon, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "RadioPlayerOptionsMessage(wrapAround: \(String(describing: wrapAround)), reconnectGiveUpAfterMillis: \(String(describing: reconnectGiveUpAfterMillis)), androidStopOnTaskRemoved: \(String(describing: androidStopOnTaskRemoved)), androidNotificationIcon: \(String(describing: androidNotificationIcon)))"
   }
 }
 
@@ -363,6 +428,8 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
       return RadioPlayerErrorMessage.fromList(self.readValue() as! [Any?])
     case 133:
       return RadioPlayerStateMessage.fromList(self.readValue() as! [Any?])
+    case 134:
+      return RadioPlayerOptionsMessage.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -385,6 +452,9 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? RadioPlayerStateMessage {
       super.writeByte(133)
+      super.writeValue(value.toList())
+    } else if let value = value as? RadioPlayerOptionsMessage {
+      super.writeByte(134)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -411,17 +481,15 @@ var messagesPigeonMethodCodec = FlutterStandardMethodCodec(readerWriter: Message
 
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol RadioPlayerHostApi {
-  func initialize(sources: [RadioSourceMessage], playWhenReady: Bool, completion: @escaping (Result<Void, Error>) -> Void)
-  func play(completion: @escaping (Result<Void, Error>) -> Void)
-  func pause(completion: @escaping (Result<Void, Error>) -> Void)
-  func playOrPause(completion: @escaping (Result<Void, Error>) -> Void)
-  func setVolume(volume: Double, completion: @escaping (Result<Void, Error>) -> Void)
-  func getVolume(completion: @escaping (Result<Double, Error>) -> Void)
-  func nextSource(completion: @escaping (Result<Void, Error>) -> Void)
-  func previousSource(completion: @escaping (Result<Void, Error>) -> Void)
-  func jumpToSourceAtIndex(index: Int64, completion: @escaping (Result<Void, Error>) -> Void)
-  func dispose(completion: @escaping (Result<Void, Error>) -> Void)
-  func getState(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func setSources(sources: [RadioSourceMessage], initialIndex: Int64?, autoPlay: Bool, completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func setOptions(options: RadioPlayerOptionsMessage, completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func play(index: Int64?, completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func pause(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func playOrPause(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func stop(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func next(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func previous(completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
+  func setVolume(volume: Double, completion: @escaping (Result<RadioPlayerStateMessage, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -430,31 +498,51 @@ class RadioPlayerHostApiSetup {
   /// Sets up an instance of `RadioPlayerHostApi` to handle messages through the `binaryMessenger`.
   static func setUp(binaryMessenger: FlutterBinaryMessenger, api: RadioPlayerHostApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
-    let initializeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.initialize\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    let setSourcesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setSources\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
-      initializeChannel.setMessageHandler { message, reply in
+      setSourcesChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
         let sourcesArg = args[0] as! [RadioSourceMessage]
-        let playWhenReadyArg = args[1] as! Bool
-        api.initialize(sources: sourcesArg, playWhenReady: playWhenReadyArg) { result in
+        let initialIndexArg: Int64? = nilOrValue(args[1])
+        let autoPlayArg = args[2] as! Bool
+        api.setSources(sources: sourcesArg, initialIndex: initialIndexArg, autoPlay: autoPlayArg) { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
         }
       }
     } else {
-      initializeChannel.setMessageHandler(nil)
+      setSourcesChannel.setMessageHandler(nil)
+    }
+    let setOptionsChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setOptions\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      setOptionsChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let optionsArg = args[0] as! RadioPlayerOptionsMessage
+        api.setOptions(options: optionsArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      setOptionsChannel.setMessageHandler(nil)
     }
     let playChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.play\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
-      playChannel.setMessageHandler { _, reply in
-        api.play { result in
+      playChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let indexArg: Int64? = nilOrValue(args[0])
+        api.play(index: indexArg) { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -468,8 +556,8 @@ class RadioPlayerHostApiSetup {
       pauseChannel.setMessageHandler { _, reply in
         api.pause { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -483,8 +571,8 @@ class RadioPlayerHostApiSetup {
       playOrPauseChannel.setMessageHandler { _, reply in
         api.playOrPause { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -493,6 +581,51 @@ class RadioPlayerHostApiSetup {
     } else {
       playOrPauseChannel.setMessageHandler(nil)
     }
+    let stopChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.stop\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      stopChannel.setMessageHandler { _, reply in
+        api.stop { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      stopChannel.setMessageHandler(nil)
+    }
+    let nextChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.next\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      nextChannel.setMessageHandler { _, reply in
+        api.next { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      nextChannel.setMessageHandler(nil)
+    }
+    let previousChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.previous\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      previousChannel.setMessageHandler { _, reply in
+        api.previous { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      previousChannel.setMessageHandler(nil)
+    }
     let setVolumeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.setVolume\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       setVolumeChannel.setMessageHandler { message, reply in
@@ -500,8 +633,8 @@ class RadioPlayerHostApiSetup {
         let volumeArg = args[0] as! Double
         api.setVolume(volume: volumeArg) { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -509,98 +642,6 @@ class RadioPlayerHostApiSetup {
       }
     } else {
       setVolumeChannel.setMessageHandler(nil)
-    }
-    let getVolumeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getVolume\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      getVolumeChannel.setMessageHandler { _, reply in
-        api.getVolume { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      getVolumeChannel.setMessageHandler(nil)
-    }
-    let nextSourceChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.nextSource\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      nextSourceChannel.setMessageHandler { _, reply in
-        api.nextSource { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      nextSourceChannel.setMessageHandler(nil)
-    }
-    let previousSourceChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.previousSource\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      previousSourceChannel.setMessageHandler { _, reply in
-        api.previousSource { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      previousSourceChannel.setMessageHandler(nil)
-    }
-    let jumpToSourceAtIndexChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.jumpToSourceAtIndex\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      jumpToSourceAtIndexChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let indexArg = args[0] as! Int64
-        api.jumpToSourceAtIndex(index: indexArg) { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      jumpToSourceAtIndexChannel.setMessageHandler(nil)
-    }
-    let disposeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.dispose\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      disposeChannel.setMessageHandler { _, reply in
-        api.dispose { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      disposeChannel.setMessageHandler(nil)
-    }
-    let getStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.flutter_radio_player_ios.RadioPlayerHostApi.getState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      getStateChannel.setMessageHandler { _, reply in
-        api.getState { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      getStateChannel.setMessageHandler(nil)
     }
   }
 }

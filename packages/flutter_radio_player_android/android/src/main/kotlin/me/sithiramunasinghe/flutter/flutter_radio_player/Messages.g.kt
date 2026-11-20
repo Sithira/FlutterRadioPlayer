@@ -228,24 +228,30 @@ enum class RadioPlayerErrorCodeMessage(val raw: Int) {
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class RadioSourceMessage (
+  val id: String,
   val url: String,
   val title: String? = null,
-  val artwork: String? = null
+  val artwork: String? = null,
+  val headers: Map<String, String>
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): RadioSourceMessage {
-      val url = pigeonVar_list[0] as String
-      val title = pigeonVar_list[1] as String?
-      val artwork = pigeonVar_list[2] as String?
-      return RadioSourceMessage(url, title, artwork)
+      val id = pigeonVar_list[0] as String
+      val url = pigeonVar_list[1] as String
+      val title = pigeonVar_list[2] as String?
+      val artwork = pigeonVar_list[3] as String?
+      val headers = pigeonVar_list[4] as Map<String, String>
+      return RadioSourceMessage(id, url, title, artwork, headers)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      id,
       url,
       title,
       artwork,
+      headers,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -256,18 +262,20 @@ data class RadioSourceMessage (
       return true
     }
     val other = other as RadioSourceMessage
-    return MessagesPigeonUtils.deepEquals(this.url, other.url) && MessagesPigeonUtils.deepEquals(this.title, other.title) && MessagesPigeonUtils.deepEquals(this.artwork, other.artwork)
+    return MessagesPigeonUtils.deepEquals(this.id, other.id) && MessagesPigeonUtils.deepEquals(this.url, other.url) && MessagesPigeonUtils.deepEquals(this.title, other.title) && MessagesPigeonUtils.deepEquals(this.artwork, other.artwork) && MessagesPigeonUtils.deepEquals(this.headers, other.headers)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.id)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.url)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.title)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.artwork)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.headers)
     return result
   }
   override fun toString(): String {
-    return "RadioSourceMessage(url=$url, title=$title, artwork=$artwork)"
+    return "RadioSourceMessage(id=$id, url=$url, title=$title, artwork=$artwork, headers=$headers)"
   }
 }
 
@@ -315,6 +323,7 @@ data class RadioPlayerErrorMessage (
 /** Generated class from Pigeon that represents data sent in messages. */
 data class RadioPlayerStateMessage (
   val status: PlaybackStatusMessage,
+  val sources: List<RadioSourceMessage>,
   val currentIndex: Long? = null,
   val nowPlayingTitle: String? = null,
   val volume: Double,
@@ -324,16 +333,18 @@ data class RadioPlayerStateMessage (
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): RadioPlayerStateMessage {
       val status = pigeonVar_list[0] as PlaybackStatusMessage
-      val currentIndex = pigeonVar_list[1] as Long?
-      val nowPlayingTitle = pigeonVar_list[2] as String?
-      val volume = pigeonVar_list[3] as Double
-      val error = pigeonVar_list[4] as RadioPlayerErrorMessage?
-      return RadioPlayerStateMessage(status, currentIndex, nowPlayingTitle, volume, error)
+      val sources = pigeonVar_list[1] as List<RadioSourceMessage>
+      val currentIndex = pigeonVar_list[2] as Long?
+      val nowPlayingTitle = pigeonVar_list[3] as String?
+      val volume = pigeonVar_list[4] as Double
+      val error = pigeonVar_list[5] as RadioPlayerErrorMessage?
+      return RadioPlayerStateMessage(status, sources, currentIndex, nowPlayingTitle, volume, error)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       status,
+      sources,
       currentIndex,
       nowPlayingTitle,
       volume,
@@ -348,12 +359,13 @@ data class RadioPlayerStateMessage (
       return true
     }
     val other = other as RadioPlayerStateMessage
-    return MessagesPigeonUtils.deepEquals(this.status, other.status) && MessagesPigeonUtils.deepEquals(this.currentIndex, other.currentIndex) && MessagesPigeonUtils.deepEquals(this.nowPlayingTitle, other.nowPlayingTitle) && MessagesPigeonUtils.deepEquals(this.volume, other.volume) && MessagesPigeonUtils.deepEquals(this.error, other.error)
+    return MessagesPigeonUtils.deepEquals(this.status, other.status) && MessagesPigeonUtils.deepEquals(this.sources, other.sources) && MessagesPigeonUtils.deepEquals(this.currentIndex, other.currentIndex) && MessagesPigeonUtils.deepEquals(this.nowPlayingTitle, other.nowPlayingTitle) && MessagesPigeonUtils.deepEquals(this.volume, other.volume) && MessagesPigeonUtils.deepEquals(this.error, other.error)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + MessagesPigeonUtils.deepHash(this.status)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.sources)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.currentIndex)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.nowPlayingTitle)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.volume)
@@ -361,7 +373,56 @@ data class RadioPlayerStateMessage (
     return result
   }
   override fun toString(): String {
-    return "RadioPlayerStateMessage(status=$status, currentIndex=$currentIndex, nowPlayingTitle=$nowPlayingTitle, volume=$volume, error=$error)"
+    return "RadioPlayerStateMessage(status=$status, sources=$sources, currentIndex=$currentIndex, nowPlayingTitle=$nowPlayingTitle, volume=$volume, error=$error)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class RadioPlayerOptionsMessage (
+  val wrapAround: Boolean,
+  val reconnectGiveUpAfterMillis: Long,
+  val androidStopOnTaskRemoved: Boolean,
+  val androidNotificationIcon: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): RadioPlayerOptionsMessage {
+      val wrapAround = pigeonVar_list[0] as Boolean
+      val reconnectGiveUpAfterMillis = pigeonVar_list[1] as Long
+      val androidStopOnTaskRemoved = pigeonVar_list[2] as Boolean
+      val androidNotificationIcon = pigeonVar_list[3] as String?
+      return RadioPlayerOptionsMessage(wrapAround, reconnectGiveUpAfterMillis, androidStopOnTaskRemoved, androidNotificationIcon)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      wrapAround,
+      reconnectGiveUpAfterMillis,
+      androidStopOnTaskRemoved,
+      androidNotificationIcon,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as RadioPlayerOptionsMessage
+    return MessagesPigeonUtils.deepEquals(this.wrapAround, other.wrapAround) && MessagesPigeonUtils.deepEquals(this.reconnectGiveUpAfterMillis, other.reconnectGiveUpAfterMillis) && MessagesPigeonUtils.deepEquals(this.androidStopOnTaskRemoved, other.androidStopOnTaskRemoved) && MessagesPigeonUtils.deepEquals(this.androidNotificationIcon, other.androidNotificationIcon)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.wrapAround)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.reconnectGiveUpAfterMillis)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.androidStopOnTaskRemoved)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.androidNotificationIcon)
+    return result
+  }
+  override fun toString(): String {
+    return "RadioPlayerOptionsMessage(wrapAround=$wrapAround, reconnectGiveUpAfterMillis=$reconnectGiveUpAfterMillis, androidStopOnTaskRemoved=$androidStopOnTaskRemoved, androidNotificationIcon=$androidNotificationIcon)"
   }
 }
 private open class MessagesPigeonCodec : StandardMessageCodec() {
@@ -392,6 +453,11 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
           RadioPlayerStateMessage.fromList(it)
         }
       }
+      134.toByte() -> {
+        (readValue(buffer) as? List<Any?>)?.let {
+          RadioPlayerOptionsMessage.fromList(it)
+        }
+      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -417,6 +483,10 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(133)
         writeValue(stream, value.toList())
       }
+      is RadioPlayerOptionsMessage -> {
+        stream.write(134)
+        writeValue(stream, value.toList())
+      }
       else -> super.writeValue(stream, value)
     }
   }
@@ -427,17 +497,15 @@ val MessagesPigeonMethodCodec = StandardMethodCodec(MessagesPigeonCodec())
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface RadioPlayerHostApi {
-  fun initialize(sources: List<RadioSourceMessage>, playWhenReady: Boolean, callback: (Result<Unit>) -> Unit)
-  fun play(callback: (Result<Unit>) -> Unit)
-  fun pause(callback: (Result<Unit>) -> Unit)
-  fun playOrPause(callback: (Result<Unit>) -> Unit)
-  fun setVolume(volume: Double, callback: (Result<Unit>) -> Unit)
-  fun getVolume(callback: (Result<Double>) -> Unit)
-  fun nextSource(callback: (Result<Unit>) -> Unit)
-  fun previousSource(callback: (Result<Unit>) -> Unit)
-  fun jumpToSourceAtIndex(index: Long, callback: (Result<Unit>) -> Unit)
-  fun dispose(callback: (Result<Unit>) -> Unit)
-  fun getState(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun setSources(sources: List<RadioSourceMessage>, initialIndex: Long?, autoPlay: Boolean, callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun setOptions(options: RadioPlayerOptionsMessage, callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun play(index: Long?, callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun pause(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun playOrPause(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun stop(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun next(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun previous(callback: (Result<RadioPlayerStateMessage>) -> Unit)
+  fun setVolume(volume: Double, callback: (Result<RadioPlayerStateMessage>) -> Unit)
 
   companion object {
     /** The codec used by RadioPlayerHostApi. */
@@ -449,100 +517,14 @@ interface RadioPlayerHostApi {
     fun setUp(binaryMessenger: BinaryMessenger, api: RadioPlayerHostApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.initialize$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.setSources$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val sourcesArg = args[0] as List<RadioSourceMessage>
-            val playWhenReadyArg = args[1] as Boolean
-            api.initialize(sourcesArg, playWhenReadyArg) { result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.play$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.play{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.pause$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.pause{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.playOrPause$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.playOrPause{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.setVolume$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val volumeArg = args[0] as Double
-            api.setVolume(volumeArg) { result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.getVolume$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.getVolume{ result: Result<Double> ->
+            val initialIndexArg = args[1] as Long?
+            val autoPlayArg = args[2] as Boolean
+            api.setSources(sourcesArg, initialIndexArg, autoPlayArg) { result: Result<RadioPlayerStateMessage> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
@@ -557,51 +539,18 @@ interface RadioPlayerHostApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.nextSource$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.nextSource{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.previousSource$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.previousSource{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.jumpToSourceAtIndex$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.setOptions$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val indexArg = args[0] as Long
-            api.jumpToSourceAtIndex(indexArg) { result: Result<Unit> ->
+            val optionsArg = args[0] as RadioPlayerOptionsMessage
+            api.setOptions(optionsArg) { result: Result<RadioPlayerStateMessage> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
               } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
             }
           }
@@ -610,15 +559,18 @@ interface RadioPlayerHostApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.dispose$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.play$separatedMessageChannelSuffix", codec)
         if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.dispose{ result: Result<Unit> ->
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val indexArg = args[0] as Long?
+            api.play(indexArg) { result: Result<RadioPlayerStateMessage> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
               } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
             }
           }
@@ -627,10 +579,102 @@ interface RadioPlayerHostApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.getState$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.pause$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.getState{ result: Result<RadioPlayerStateMessage> ->
+            api.pause{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.playOrPause$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.playOrPause{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.stop$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.stop{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.next$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.next{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.previous$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.previous{ result: Result<RadioPlayerStateMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.flutter_radio_player_android.RadioPlayerHostApi.setVolume$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val volumeArg = args[0] as Double
+            api.setVolume(volumeArg) { result: Result<RadioPlayerStateMessage> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
