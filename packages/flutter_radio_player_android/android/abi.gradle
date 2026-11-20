@@ -1,0 +1,4 @@
+// Only applied with -PfrpAbiCheck (CI); host app builds never load it.
+kotlin {
+    explicitApiWarning()
+}

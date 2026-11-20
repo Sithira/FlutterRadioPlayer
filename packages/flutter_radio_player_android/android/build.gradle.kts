@@ -47,6 +47,10 @@ kotlin {
     }
 }
 
+if (providers.gradleProperty("frpAbiCheck").isPresent) {
+    apply(from = "abi.gradle")
+}
+
 dependencies {
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-exoplayer-hls:$media3Version")

@@ -1,0 +1,106 @@
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus extends java.lang.Enum<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus> {
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus IDLE;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus LOADING;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus PLAYING;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus PAUSED;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus ERROR;
+  public static me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus[] values();
+  public static me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus> getEntries();
+}
+public interface me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback {
+  public abstract void onComplete(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerIndexException);
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode, java.lang.String);
+  public final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode getCode();
+  public final java.lang.String getMessage();
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode extends java.lang.Enum<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode> {
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode INVALID_SOURCE;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode NETWORK;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode HTTP_STATUS;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode UNSUPPORTED_FORMAT;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode BACKGROUND_RESTRICTED;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode TIMEOUT;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode UNKNOWN;
+  public static me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode[] values();
+  public static me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErrorCode> getEntries();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerIndexException extends java.lang.IllegalArgumentException {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerIndexException(java.lang.String);
+}
+public interface me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerListener {
+  public abstract void onSnapshot(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot);
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo(boolean, long, boolean, java.lang.String);
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo(boolean, long, boolean, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final boolean getWrapAround();
+  public final long getReconnectGiveUpAfterMillis();
+  public final boolean getStopOnTaskRemoved();
+  public final java.lang.String getNotificationIcon();
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot {
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot$Companion Companion;
+  public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot IDLE;
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus, java.util.List<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo>, java.lang.Integer, java.lang.String, float, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError);
+  public final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.PlaybackStatus getStatus();
+  public final java.lang.Integer getCurrentIndex();
+  public final java.lang.String getNowPlayingTitle();
+  public final float getVolume();
+  public final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerError getError();
+  public final java.util.List<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo> getSources();
+  public final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo getCurrentSource();
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot$Companion {
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>);
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getUrl();
+  public final java.lang.String getTitle();
+  public final java.lang.String getArtwork();
+  public final java.lang.String getId();
+  public final java.util.Map<java.lang.String, java.lang.String> getHeaders();
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.RadioPlayerClient {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.RadioPlayerClient(android.content.Context);
+  public final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot getSnapshot();
+  public final void addListener(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerListener);
+  public final void removeListener(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerListener);
+  public final void setSources(java.util.List<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo>, java.lang.Integer, boolean, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void setSources(java.util.List<me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo>, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void setOptions(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void play(java.lang.Integer, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void play(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void pause(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void playOrPause(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void stop(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void next(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void previous(me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void setVolume(float, me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerCallback);
+  public final void release();
+}
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService extends androidx.media3.session.MediaLibraryService {
+  public me.sithiramunasinghe.flutter.flutter_radio_player.core.PlaybackService();
+  public void onCreate();
+  public androidx.media3.session.MediaLibraryService$MediaLibrarySession onGetSession(androidx.media3.session.MediaSession$ControllerInfo);
+  public void onTaskRemoved(android.content.Intent);
+  public void onDestroy();
+  public androidx.media3.session.MediaSession onGetSession(androidx.media3.session.MediaSession$ControllerInfo);
+}

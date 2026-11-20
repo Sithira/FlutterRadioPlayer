@@ -25,26 +25,9 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerErr
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.logic.selectSource
-import java.util.concurrent.CopyOnWriteArraySet
 
 @OptIn(UnstableApi::class)
 public class PlaybackService : MediaLibraryService() {
-
-    internal companion object {
-        @Volatile
-        var isRunning: Boolean = false
-            private set
-
-        private val runningListeners = CopyOnWriteArraySet<() -> Unit>()
-
-        fun addRunningListener(listener: () -> Unit) {
-            runningListeners += listener
-        }
-
-        fun removeRunningListener(listener: () -> Unit) {
-            runningListeners -= listener
-        }
-    }
 
     private lateinit var exoPlayer: ExoPlayer
     private lateinit var policyPlayer: RadioPolicyPlayer
@@ -82,8 +65,7 @@ public class PlaybackService : MediaLibraryService() {
         notificationProvider.setSmallIcon(packageManager.getApplicationInfo(packageName, 0).icon)
         setMediaNotificationProvider(notificationProvider)
 
-        isRunning = true
-        runningListeners.forEach { it() }
+        ServiceLiveness.started()
     }
 
     override fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? = session
@@ -93,7 +75,7 @@ public class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
-        isRunning = false
+        ServiceLiveness.stopped()
         exoPlayer.removeListener(playerListener)
         session?.run {
             player.release()

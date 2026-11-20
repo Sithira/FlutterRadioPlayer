@@ -21,6 +21,8 @@ import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSna
 import me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo
 import java.util.concurrent.CopyOnWriteArrayList
 
+private const val REVISION_TIMEOUT_MS = 3000L
+
 /**
  * A handle on the shared radio player. Create one per user (a Flutter engine, a
  * screen); all of them control the same player. Call every method on the main
@@ -47,7 +49,7 @@ public class RadioPlayerClient(context: Context) {
     private val onServiceStarted: () -> Unit = { main.post { if (listeners.isNotEmpty()) connect() } }
 
     init {
-        PlaybackService.addRunningListener(onServiceStarted)
+        ServiceLiveness.addListener(onServiceStarted)
     }
 
     /** The latest snapshot; idle until connected to a running player. */
@@ -55,7 +57,7 @@ public class RadioPlayerClient(context: Context) {
 
     public fun addListener(listener: RadioPlayerListener) {
         listeners += listener
-        if (PlaybackService.isRunning) connect()
+        if (ServiceLiveness.isRunning) connect()
     }
 
     public fun removeListener(listener: RadioPlayerListener) {
@@ -153,7 +155,7 @@ public class RadioPlayerClient(context: Context) {
     public fun release() {
         if (released) return
         released = true
-        PlaybackService.removeRunningListener(onServiceStarted)
+        ServiceLiveness.removeListener(onServiceStarted)
         listeners.clear()
         val future = controllerFuture
         controllerFuture = null
@@ -305,9 +307,5 @@ public class RadioPlayerClient(context: Context) {
         override val playWhenReady: Boolean get() = c.playWhenReady
         override val isPlaying: Boolean get() = c.isPlaying
         override val volume: Float get() = c.volume
-    }
-
-    private companion object {
-        const val REVISION_TIMEOUT_MS = 3000L
     }
 }

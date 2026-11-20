@@ -118,3 +118,32 @@ jobs:
       - run: dart run pigeon --input pigeons/messages.dart
         working-directory: ${{ matrix.package }}
       - run: git diff --exit-code
+
+  native-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_STABLE }}
+      - name: Core files do not import Flutter
+        run: |
+          if grep -rnE '^import io\.flutter' packages/flutter_radio_player_android/android/src/main/kotlin/me/sithiramunasinghe/flutter/flutter_radio_player/core; then exit 1; fi
+          if grep -rnE '^(@preconcurrency |internal |public )?import Flutter' packages/flutter_radio_player_ios/ios/flutter_radio_player_ios/Sources/flutter_radio_player_ios/core; then exit 1; fi
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter build apk --debug --config-only
+        working-directory: example
+      - name: Android core declares visibility and return types (explicit API)
+        run: |
+          set -o pipefail
+          ./gradlew -PfrpAbiCheck :flutter_radio_player_android:compileDebugKotlin 2>&1 | tee build.log
+          if grep -E '^w: .*/core/.*(explicit API|Visibility must be specified|Return type must be specified)' build.log; then exit 1; fi
+        working-directory: example/android
+      - name: Android core public ABI matches api/flutter_radio_player_android.api
+        run: packages/flutter_radio_player_android/android/abi.sh check
