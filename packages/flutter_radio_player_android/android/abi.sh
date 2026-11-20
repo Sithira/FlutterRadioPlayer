@@ -9,7 +9,7 @@ core="me/sithiramunasinghe/flutter/flutter_radio_player/core"
 
 dump() {
     cd "$classes"
-    find "$core/api" -name '*.class' | sort
+    find "$core/api" -name '*.class' | LC_ALL=C sort
     echo "$core/RadioPlayerClient.class"
     echo "$core/PlaybackService.class"
 } 

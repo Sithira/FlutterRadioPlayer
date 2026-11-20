@@ -49,6 +49,8 @@ public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.Ra
   public java.lang.String toString();
   public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerOptionsInfo();
 }
+public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot$Companion {
+}
 public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot {
   public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot$Companion Companion;
   public static final me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot IDLE;
@@ -63,8 +65,6 @@ public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.Ra
   public boolean equals(java.lang.Object);
   public int hashCode();
   public java.lang.String toString();
-}
-public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioPlayerSnapshot$Companion {
 }
 public final class me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo {
   public me.sithiramunasinghe.flutter.flutter_radio_player.core.api.RadioSourceInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>);
