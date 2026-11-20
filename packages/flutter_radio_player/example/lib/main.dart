@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
 
 const _sources = [

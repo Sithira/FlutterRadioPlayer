@@ -3,18 +3,19 @@ description: Example app for flutter_radio_player.
 publish_to: 'none'
 
 environment:
-  sdk: ^3.12.0
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_radio_player:
     path: ../
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 dependency_overrides:
   flutter_radio_player_platform_interface:

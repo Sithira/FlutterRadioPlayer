@@ -35,3 +35,4 @@ docs/
 
 # FVM Version Cache
 .fvm/
+.flutter-plugins-dependencies

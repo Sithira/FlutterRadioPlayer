@@ -1,6 +1,6 @@
 /// Flutter Radio Player library for streaming online radio with background
 /// playback support on Android and iOS.
-library flutter_radio_player;
+library;
 
 export 'package:flutter_radio_player_platform_interface/flutter_radio_player_platform_interface.dart'
     show

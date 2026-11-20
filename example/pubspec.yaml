@@ -3,7 +3,7 @@ description: "Demonstrates how to use the flutter_radio_player plugin."
 publish_to: 'none'
 
 environment:
-  sdk: ^3.12.0
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
@@ -11,13 +11,14 @@ dependencies:
   flutter_radio_player:
     path: ../packages/flutter_radio_player
   cupertino_icons: ^1.0.6
+  material_ui: ^1.11.1
 
 dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   flutter_radio_player_platform_interface: ^4.2.0
   plugin_platform_interface: ^2.1.7
 
