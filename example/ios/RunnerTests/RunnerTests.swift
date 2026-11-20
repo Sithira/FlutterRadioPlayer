@@ -1,3 +1,4 @@
+import MediaPlayer
 import XCTest
 
 @testable import flutter_radio_player_ios
@@ -118,4 +119,47 @@ class RadioPlayerCoreTests: XCTestCase {
         XCTAssertEqual(count, 1)
         XCTAssertNil(observation)
     }
+
+    func testSetSourcesPublishesNothingBeforePlay() throws {
+        let core = RadioPlayerCore.acquire()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        try core.setSources([RadioSourceInfo(url: "https://a.example/s", title: "A")])
+        XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo)
+        try core.play()
+        XCTAssertEqual(MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "A")
+        core.stop()
+        XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo)
+        try core.setSources([])
+    }
+
+    func testRemoteCommandsFollowListAndWrapAround() throws {
+        let core = RadioPlayerCore.acquire()
+        let center = MPRemoteCommandCenter.shared()
+        let list = (0..<3).map { RadioSourceInfo(url: "https://s\($0).example/s") }
+        try core.setSources(list, initialIndex: 2)
+        try core.play()
+        XCTAssertTrue(center.nextTrackCommand.isEnabled)
+        XCTAssertFalse(center.changePlaybackPositionCommand.isEnabled)
+        core.setOptions(RadioPlayerOptionsInfo(wrapAround: false))
+        XCTAssertFalse(center.nextTrackCommand.isEnabled)
+        XCTAssertTrue(center.previousTrackCommand.isEnabled)
+        core.setOptions(RadioPlayerOptionsInfo())
+        try core.setSources([list[0]])
+        try core.play()
+        XCTAssertFalse(center.nextTrackCommand.isEnabled)
+        XCTAssertFalse(center.previousTrackCommand.isEnabled)
+        try core.setSources([])
+    }
+
+    func testPlayOrPauseUsesPlayIntentAndNextKeepsIt() throws {
+        let core = RadioPlayerCore.acquire()
+        try core.setSources((0..<2).map { RadioSourceInfo(url: "https://s\($0).example/s") })
+        XCTAssertEqual(core.playOrPause().status, .loading)
+        XCTAssertEqual(core.next().status, .loading)
+        XCTAssertEqual(core.playOrPause().status, .paused)
+        XCTAssertEqual(core.next().status, .paused)
+        XCTAssertEqual(core.snapshot.currentIndex, 0)
+        try core.setSources([])
+    }
+
 }

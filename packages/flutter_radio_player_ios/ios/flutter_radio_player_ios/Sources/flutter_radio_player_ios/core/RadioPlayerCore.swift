@@ -353,6 +353,10 @@ public final class RadioPlayerCore: NSObject {
         center.togglePlayPauseCommand.addTarget(self, action: #selector(remoteToggle(_:)))
         center.nextTrackCommand.addTarget(self, action: #selector(remoteNext(_:)))
         center.previousTrackCommand.addTarget(self, action: #selector(remotePrevious(_:)))
+        for command in [center.seekForwardCommand, center.seekBackwardCommand, center.skipForwardCommand,
+                        center.skipBackwardCommand, center.changePlaybackPositionCommand] {
+            command.isEnabled = false
+        }
         updateRemoteCommands()
     }
 
