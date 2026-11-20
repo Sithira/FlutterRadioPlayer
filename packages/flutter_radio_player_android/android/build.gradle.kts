@@ -23,6 +23,7 @@ android {
     }
 
     testOptions {
+        unitTests.isIncludeAndroidResources = true
         unitTests.all {
             it.useJUnitPlatform()
             it.outputs.upToDateWhen { false }
@@ -48,6 +49,12 @@ dependencies {
     implementation("androidx.core:core-ktx:1.18.0")
     implementation("com.google.guava:guava:33.3.1-android")
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.24.0")
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.robolectric:robolectric:4.18.1")
+    testImplementation("androidx.media3:media3-test-utils:$media3Version")
+    testImplementation("androidx.media3:media3-test-utils-robolectric:$media3Version")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
