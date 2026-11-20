@@ -6,8 +6,11 @@ export 'src/types/types.dart';
 
 /// The platform interface for flutter_radio_player.
 ///
-/// Platform implementations should extend this class and override all methods.
-/// Register the implementation by setting [instance].
+/// Every command returns the state as it is after the native player applied
+/// the command. Implementations send the native call synchronously, before
+/// their first `await`, so unawaited calls reach the native player in call
+/// order. The only error a command reports is a [RangeError] for an index
+/// outside the list the native player holds.
 abstract class FlutterRadioPlayerPlatform extends PlatformInterface {
   /// Creates a new [FlutterRadioPlayerPlatform].
   FlutterRadioPlayerPlatform() : super(token: _token);
@@ -20,13 +23,14 @@ abstract class FlutterRadioPlayerPlatform extends PlatformInterface {
   ///
   /// Throws [StateError] if no implementation has been registered.
   static FlutterRadioPlayerPlatform get instance {
-    if (_instance == null) {
+    final instance = _instance;
+    if (instance == null) {
       throw StateError(
         'FlutterRadioPlayerPlatform has not been set. '
         'Ensure a platform implementation is registered.',
       );
     }
-    return _instance!;
+    return instance;
   }
 
   /// Registers a platform implementation.
@@ -35,125 +39,47 @@ abstract class FlutterRadioPlayerPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  /// Initializes the player with the given [sources].
-  ///
-  /// Set [playWhenReady] to `true` to begin playback immediately.
-  Future<void> initialize(
-    List<RadioSource> sources, {
-    bool playWhenReady = false,
-  }) {
-    throw UnimplementedError('initialize() has not been implemented.');
-  }
+  /// Native state snapshots: the current one once a listener is attached,
+  /// then every change. May emit duplicates.
+  Stream<RadioPlayerState> get stateStream =>
+      throw UnimplementedError('stateStream has not been implemented.');
 
-  /// Starts or resumes playback.
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> play() {
-    throw UnimplementedError('play() has not been implemented.');
-  }
+  /// Replaces the source list; see `FlutterRadioPlayer.setSources`.
+  Future<RadioPlayerState> setSources(
+    List<RadioSource> sources, {
+    int? initialIndex,
+    bool autoPlay = false,
+  }) => throw UnimplementedError('setSources() has not been implemented.');
+
+  /// Replaces the options of the shared player.
+  Future<RadioPlayerState> setOptions(RadioPlayerOptions options) =>
+      throw UnimplementedError('setOptions() has not been implemented.');
+
+  /// Plays the current source, or source [index] if given.
+  Future<RadioPlayerState> play({int? index}) =>
+      throw UnimplementedError('play() has not been implemented.');
 
   /// Pauses playback.
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> pause() {
-    throw UnimplementedError('pause() has not been implemented.');
-  }
+  Future<RadioPlayerState> pause() =>
+      throw UnimplementedError('pause() has not been implemented.');
 
-  /// Toggles between play and pause.
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> playOrPause() {
-    throw UnimplementedError('playOrPause() has not been implemented.');
-  }
+  /// Pauses if playback is requested, otherwise plays. Decided natively.
+  Future<RadioPlayerState> playOrPause() =>
+      throw UnimplementedError('playOrPause() has not been implemented.');
 
-  /// Sets the playback volume to [volume], a value between 0.0 and 1.0.
-  ///
-  /// On iOS the volume is always applied; before [initialize] it is remembered
-  /// and used when the player is created. On Android a volume set before
-  /// [initialize] or after [dispose] is ignored and logged as a warning, and
-  /// [initialize] resets the volume to 0.5. [initialize] does not need to be
-  /// awaited before this call.
-  Future<void> setVolume(double volume) {
-    throw UnimplementedError('setVolume() has not been implemented.');
-  }
+  /// Stops playback and closes the stream; keeps sources and settings.
+  Future<RadioPlayerState> stop() =>
+      throw UnimplementedError('stop() has not been implemented.');
 
-  /// Returns the current playback volume.
-  Future<double> getVolume() {
-    throw UnimplementedError('getVolume() has not been implemented.');
-  }
+  /// Moves to the next source, keeping the play state.
+  Future<RadioPlayerState> next() =>
+      throw UnimplementedError('next() has not been implemented.');
 
-  /// Advances to the next source in the playlist.
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> nextSource() {
-    throw UnimplementedError('nextSource() has not been implemented.');
-  }
+  /// Moves to the previous source, keeping the play state.
+  Future<RadioPlayerState> previous() =>
+      throw UnimplementedError('previous() has not been implemented.');
 
-  /// Returns to the previous source in the playlist.
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> previousSource() {
-    throw UnimplementedError('previousSource() has not been implemented.');
-  }
-
-  /// Jumps to the source at the given [index].
-  ///
-  /// Calls made before [initialize] or after [dispose] are ignored and logged
-  /// as a warning on the native side. [initialize] does not need to be awaited
-  /// before this call.
-  Future<void> jumpToSourceAtIndex(int index) {
-    throw UnimplementedError('jumpToSourceAtIndex() has not been implemented.');
-  }
-
-  /// Releases all resources held by the player.
-  Future<void> dispose() {
-    throw UnimplementedError('dispose() has not been implemented.');
-  }
-
-  /// A stream that emits `true` when playing, `false` when paused.
-  ///
-  /// Superseded by [stateStream].
-  Stream<bool> get isPlayingStream {
-    throw UnimplementedError('isPlayingStream has not been implemented.');
-  }
-
-  /// A stream of [NowPlayingInfo] with current track metadata.
-  ///
-  /// Superseded by [stateStream].
-  Stream<NowPlayingInfo> get nowPlayingStream {
-    throw UnimplementedError('nowPlayingStream has not been implemented.');
-  }
-
-  /// A stream of [VolumeInfo] when the volume changes.
-  ///
-  /// Superseded by [stateStream].
-  Stream<VolumeInfo> get volumeStream {
-    throw UnimplementedError('volumeStream has not been implemented.');
-  }
-
-  /// The latest snapshot of the player state.
-  ///
-  /// The value is eventually consistent: it reflects the most recent snapshot
-  /// received from the platform, not the result of the last call.
-  RadioPlayerState get state {
-    throw UnimplementedError('state has not been implemented.');
-  }
-
-  /// A stream of [RadioPlayerState] snapshots.
-  ///
-  /// Every new listener first receives the latest snapshot, if one has arrived,
-  /// followed by live updates.
-  Stream<RadioPlayerState> get stateStream {
-    throw UnimplementedError('stateStream has not been implemented.');
-  }
+  /// Sets the player volume, 0.0 to 1.0.
+  Future<RadioPlayerState> setVolume(double volume) =>
+      throw UnimplementedError('setVolume() has not been implemented.');
 }
