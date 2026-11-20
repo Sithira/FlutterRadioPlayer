@@ -1,25 +1,24 @@
 /// The category of a [RadioPlayerError].
 ///
-/// In 4.x iOS emits [invalidSource], [network] and [unknown], and Android emits
-/// [network] and [unknown]. The other values are reserved and may never be
-/// emitted.
+/// [network], [timeout], [unknown] and [httpStatus] 5xx are retried (see
+/// `ReconnectPolicy`); the others set the status to `error` at once.
 enum RadioPlayerErrorCode {
-  /// The source URL is invalid.
+  /// The source URL is not an absolute `http` or `https` URL.
   invalidSource,
 
   /// A network connectivity problem prevented playback.
   network,
 
-  /// The server answered with an unusable HTTP status. Reserved.
+  /// The server answered with an HTTP error status.
   httpStatus,
 
-  /// The stream format is not supported. Reserved.
+  /// The stream format is not supported.
   unsupportedFormat,
 
-  /// The system restricted background playback. Reserved.
+  /// The system did not allow playback to start in the background.
   backgroundRestricted,
 
-  /// The operation timed out. Reserved.
+  /// Connecting or reading the stream timed out.
   timeout,
 
   /// The cause could not be determined.

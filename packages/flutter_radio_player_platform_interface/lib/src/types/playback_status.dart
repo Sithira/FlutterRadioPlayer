@@ -1,19 +1,19 @@
 /// The high-level playback status of the player.
 enum PlaybackStatus {
-  /// No sources are loaded, or the player has been disposed.
+  /// No sources.
   idle,
 
-  /// Playback has been requested but is not yet audible.
+  /// Playback is requested but not audible yet: connecting, buffering,
+  /// stalled or reconnecting.
   loading,
 
   /// Audio is playing.
   playing,
 
-  /// Sources are loaded and playback has not been requested, or is suppressed.
+  /// Sources are set and playback is not requested: never started, paused,
+  /// stopped, or held back by the system.
   paused,
 
-  /// A playback error is pending.
-  ///
-  /// Cleared by the next play, source change or initialize.
+  /// Playback failed and the player is not retrying. `play()` tries again.
   error,
 }
