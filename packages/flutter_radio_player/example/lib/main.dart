@@ -1,20 +1,20 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_radio_player/flutter_radio_player.dart';
+import 'package:material_ui/material_ui.dart';
 
-const _sources = [
-  RadioSource(
-    url: 'https://s2-webradio.antenne.de/chillout?icy=https',
-    title: 'Antenne Chillout',
-  ),
-  RadioSource(
-    url:
-        'https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https',
-    title: 'SunFM - Sri Lanka',
-  ),
-];
+final player = FlutterRadioPlayer.instance;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  player.setSources(const [
+    RadioSource(
+      url: 'https://s2-webradio.antenne.de/chillout?icy=https',
+      title: 'Antenne Chillout',
+    ),
+    RadioSource(
+      url: 'https://radio.lotustechnologieslk.net:2020/stream/sunfmgarden?icy=https',
+      title: 'SunFM - Sri Lanka',
+    ),
+  ]);
   runApp(const MyApp());
 }
 
@@ -30,120 +30,38 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      home: const PlayerScreen(),
-    );
-  }
-}
-
-class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key});
-
-  @override
-  State<PlayerScreen> createState() => _PlayerScreenState();
-}
-
-class _PlayerScreenState extends State<PlayerScreen> {
-  final _player = FlutterRadioPlayer.instance;
-  double _volume = 0.5;
-
-  @override
-  void initState() {
-    super.initState();
-    _player.initialize(_sources, playWhenReady: true);
-  }
-
-  @override
-  void dispose() {
-    _player.dispose();
-    super.dispose();
-  }
-
-  void _jumpBy(RadioPlayerState state, int offset) {
-    final current = state.currentIndex ?? 0;
-    final target = (current + offset + _sources.length) % _sources.length;
-    _player.jumpToSourceAtIndex(target);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Flutter Radio Player')),
-      body: StreamBuilder<RadioPlayerState>(
-        initialData: _player.state,
-        stream: _player.stateStream,
-        builder: (context, snapshot) {
-          final state = snapshot.requireData;
-          final isPlaying = state.status == PlaybackStatus.playing ||
-              state.status == PlaybackStatus.loading;
-          final error = state.error;
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Flutter Radio Player')),
+        body: RadioPlayerBuilder(
+          builder: (context, state) => Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  state.nowPlaying?.title ??
-                      state.currentSource?.title ??
-                      'No track info',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              if (state.isLoading) const LinearProgressIndicator(),
+              const SizedBox(height: 24),
+              Text(
+                state.nowPlaying?.title ?? state.currentSource?.title ?? '',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
               ),
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '${error.code.name}: ${error.message}',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error),
-                    textAlign: TextAlign.center,
-                  ),
+              if (state.error case final error?)
+                Text(
+                  error.message,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    iconSize: 36,
-                    onPressed: () => _jumpBy(state, -1),
-                    icon: const Icon(Icons.skip_previous_rounded),
-                  ),
-                  IconButton(
-                    iconSize: 48,
-                    onPressed: () =>
-                        isPlaying ? _player.pause() : _player.play(),
-                    icon: Icon(
-                      isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                    ),
-                  ),
-                  IconButton(
-                    iconSize: 36,
-                    onPressed: () => _jumpBy(state, 1),
-                    icon: const Icon(Icons.skip_next_rounded),
-                  ),
-                ],
+              IconButton(
+                iconSize: 48,
+                icon: Icon(state.isPlaying ? Icons.pause : Icons.play_arrow),
+                onPressed: player.playOrPause,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Row(
-                  children: [
-                    const Icon(Icons.volume_down_rounded),
-                    Expanded(
-                      child: Slider(
-                        value: _volume,
-                        onChanged: (value) {
-                          setState(() => _volume = value);
-                          _player.setVolume(value);
-                        },
-                      ),
-                    ),
-                    const Icon(Icons.volume_up_rounded),
-                  ],
+              Slider(value: state.volume, onChanged: player.setVolume),
+              for (final (index, source) in state.sources.indexed)
+                ListTile(
+                  title: Text(source.title ?? source.url),
+                  selected: index == state.currentIndex,
+                  onTap: () => player.play(index: index),
                 ),
-              ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }
