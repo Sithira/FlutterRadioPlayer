@@ -32,3 +32,6 @@ build/
 .swiftpm/
 
 docs/
+
+# FVM Version Cache
+.fvm/
