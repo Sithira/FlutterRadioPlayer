@@ -1,3 +1,14 @@
+# 5.0.0-dev.1
+
+First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.
+
+* Requires Dart 3.12 and Flutter 3.44 or later.
+* iOS: iOS 15 or later. Apps created with Flutter 3.44 or earlier must raise the
+  Podfile `platform` and `IPHONEOS_DEPLOYMENT_TARGET` to 15.0.
+* iOS: the Swift package declares the `FlutterFramework` dependency. CocoaPods
+  stays supported.
+* Platform channel code regenerated with Pigeon 30.0.4. No channel change.
+
 # 4.2.0
 
 * Added the state snapshot (`state`, `stateStream`). The three legacy streams

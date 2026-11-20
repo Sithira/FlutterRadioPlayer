@@ -1,3 +1,9 @@
+# 5.0.0-dev.1
+
+First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.
+
+* Requires Dart 3.12 and Flutter 3.44 or later.
+
 # 4.2.0
 
 * Added `RadioPlayerState`, `PlaybackStatus`, `RadioPlayerError` and

@@ -1,3 +1,18 @@
+# 5.0.0-dev.1
+
+First 5.0 pre-release. Build requirements change; the Dart API and behaviour are the same as 4.2.0.
+
+* Requires Dart 3.12 and Flutter 3.44 or later.
+* Android: minSdk 24, Java 17, compileSdk 36. The plugin no longer applies the
+  Kotlin Gradle Plugin (`kotlin-android`) and has no `buildscript` of its own,
+  following Flutter's built-in Kotlin migration. It builds in apps that use
+  built-in Kotlin and in apps that still apply the Kotlin Gradle Plugin.
+* Android: Media3 1.11.1, pinned to that exact version.
+* iOS: iOS 15 or later. Apps created with Flutter 3.44 or earlier must raise the
+  Podfile `platform` and `IPHONEOS_DEPLOYMENT_TARGET` to 15.0.
+* iOS: the Swift package declares the `FlutterFramework` dependency. CocoaPods
+  stays supported.
+
 # 4.2.0
 
 * Added `FlutterRadioPlayer.instance`, `state` and `stateStream`. The state
